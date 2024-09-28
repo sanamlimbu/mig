@@ -208,8 +208,6 @@ resource "aws_vpc_security_group_egress_rule" "ecs_node_allow_all_traffic_ipv4" 
   ip_protocol       = "tcp"
 }
 
-
-
 # --- ECS Launch Template ---
 
 data "aws_ssm_parameter" "ecs_node_ami" {
@@ -243,7 +241,7 @@ resource "aws_autoscaling_group" "ecs" {
   name_prefix               = "${local.project_name}-ecs-asg-"
   vpc_zone_identifier       = [for s in aws_subnet.public : s.id]
   min_size                  = 1
-  max_size                  = 2
+  max_size                  = 1
   health_check_grace_period = 0
   health_check_type         = "EC2"
   desired_capacity          = 1
@@ -415,36 +413,37 @@ output "alb_url" {
 
 # --- Task Definition ---
 
-resource "aws_ecs_task_definition" "kafka" {
-  family             = local.project_name
+resource "aws_ecs_task_definition" "nats" {
+  family             = "${local.project_name}-nats-service"
   task_role_arn      = aws_iam_role.ecs_task_role.arn
   execution_role_arn = aws_iam_role.ecs_exec_role.arn
   network_mode       = "awsvpc"
-  memory             = "256"
+  runtime_platform {
+    operating_system_family = "LINUX"
+    cpu_architecture        = "X86_64"
+  }
 
   container_definitions = jsonencode([{
-    name      = "kafka",
-    image     = "confluentinc/cp-kafka:latest",
+    name      = "nats",
+    image     = "nats:alpine",
     essential = true,
+    cpu       = 1024
+    memory    = 512
     portMappings = [
       {
-        containerPort = 9092,
-        hostPort      = 9092
+        containerPort = 4222,
+        hostPort      = 4222
       }
     ],
 
     environment = [
       {
-        "name" : "KAFKA_ADVERTISED_LISTENERS",
-        "value" : "PLAINTEXT://localhost:9092"
+        "name" : "NATS_LISTEN",
+        "value" : "0.0.0.0:4222"
       },
       {
-        "name" : "KAFKA_BROKER_ID",
-        "value" : "1"
-      },
-      {
-        "name" : "KAFKA_ZOOKEEPER_CONNECT",
-        "value" : "zookeeper:2181"
+        "name" : "NATS_CLUSTER",
+        "value" : "nats://localhost:4222"
       }
     ]
 
@@ -453,38 +452,71 @@ resource "aws_ecs_task_definition" "kafka" {
       options = {
         "awslogs-region"        = var.aws_region,
         "awslogs-group"         = aws_cloudwatch_log_group.ecs.name,
-        "awslogs-stream-prefix" = "kafka"
+        "awslogs-stream-prefix" = "nats"
       }
     },
   }])
 }
 
-resource "aws_ecs_task_definition" "zookeeper" {
-  family             = local.project_name
+resource "aws_ecs_task_definition" "mig" {
+  family             = "${local.project_name}-service"
   task_role_arn      = aws_iam_role.ecs_task_role.arn
   execution_role_arn = aws_iam_role.ecs_exec_role.arn
   network_mode       = "awsvpc"
-  memory             = "256"
+  runtime_platform {
+    operating_system_family = "LINUX"
+    cpu_architecture        = "X86_64"
+  }
 
   container_definitions = jsonencode([{
-    name      = "zookeeper",
-    image     = "confluentinc/cp-zookeeper:latest",
+    name      = "mig",
+    image     = "${aws_ecr_repository.mig.repository_url}:latest",
     essential = true,
+    cpu       = 1024
+    memory    = 512
     portMappings = [
       {
-        containerPort = 2181,
-        hostPort      = 2181
+        containerPort = 80,
+        hostPort      = 80
       }
     ],
 
     environment = [
       {
-        "name" : "ZOOKEEPER_CLIENT_PORT",
-        "value" : "2181"
+        "name" : "MIG_ADDR",
+        "value" : ""
       },
       {
-        "name" : "ZOOKEEPER_TICK_TIME",
-        "value" : "2000"
+        "name" : "MIG_ENVIRONMENT",
+        "value" : ""
+      },
+      {
+        "name" : "MIG_JWT_SECRET",
+        "value" : ""
+      },
+      {
+        "name" : "MIG_DATABASE_USER",
+        "value" : ""
+      },
+      {
+        "name" : "MIG_DATABASE_PASS",
+        "value" : ""
+      },
+      {
+        "name" : "MIG_DATABASE_HOST",
+        "value" : ""
+      },
+      {
+        "name" : "MIG_DATABASE_PORT",
+        "value" : ""
+      },
+      {
+        "name" : "MIG_DATABASE_NAME",
+        "value" : ""
+      },
+      {
+        "name" : "MIG_DATABASE_APPLICATION_NAME",
+        "value" : ""
       }
     ]
 
@@ -493,10 +525,14 @@ resource "aws_ecs_task_definition" "zookeeper" {
       options = {
         "awslogs-region"        = var.aws_region,
         "awslogs-group"         = aws_cloudwatch_log_group.ecs.name,
-        "awslogs-stream-prefix" = "zookeeper"
+        "awslogs-stream-prefix" = "mig"
       }
     },
   }])
+}
+
+output "mig_task_definition_arn" {
+  value = aws_ecs_task_definition.mig.arn
 }
 
 # --- ECS Service ---
@@ -521,10 +557,10 @@ resource "aws_security_group" "ecs_task" {
   }
 }
 
-resource "aws_ecs_service" "kafka" {
-  name            = "kafka"
+resource "aws_ecs_service" "nats" {
+  name            = "nats"
   cluster         = aws_ecs_cluster.mig.id
-  task_definition = aws_ecs_task_definition.kafka.arn
+  task_definition = aws_ecs_task_definition.nats.arn
   desired_count   = 1
 
   network_configuration {
@@ -546,139 +582,35 @@ resource "aws_ecs_service" "kafka" {
   lifecycle {
     ignore_changes = [desired_count]
   }
+
+  depends_on = [aws_autoscaling_group.ecs]
 }
 
-# resource "aws_ecs_task_definition" "chatservice" {
-#   family             = local.project_name
-#   task_role_arn      = aws_iam_role.ecs_task_role.arn
-#   execution_role_arn = aws_iam_role.ecs_exec_role.arn
-#   network_mode       = "awsvpc"
-#   memory             = "256"
+resource "aws_ecs_service" "mig" {
+  name            = "mig"
+  cluster         = aws_ecs_cluster.mig.id
+  task_definition = aws_ecs_task_definition.mig.arn
+  desired_count   = 1
 
-#   container_definitions = jsonencode([{
-#     name      = "chatservice",
-#     image     = "${aws_ecr_repository.chatservice.repository_url}:latest",
-#     essential = true,
-#     portMappings = [
-#       {
-#         containerPort = 8080,
-#         hostPort      = 8001
-#       }
-#     ],
+  network_configuration {
+    security_groups = [aws_security_group.ecs_task.id]
+    subnets         = [for s in aws_subnet.private : s.id]
+  }
 
-#     environment = [
-#       { name  = "EXAMPLE",
-#         value = "example"
-#       }
-#     ]
+  capacity_provider_strategy {
+    capacity_provider = aws_ecs_capacity_provider.main.name
+    base              = 1
+    weight            = 100
+  }
 
-#     logConfiguration = {
-#       logDriver = "awslogs",
-#       options = {
-#         "awslogs-region"        = var.aws_region,
-#         "awslogs-group"         = aws_cloudwatch_log_group.ecs.name,
-#         "awslogs-stream-prefix" = "chatservice"
-#       }
-#     },
-#   }])
-# }
+  ordered_placement_strategy {
+    type  = "spread"
+    field = "attribute:ecs.availability-zone"
+  }
 
-# resource "aws_ecs_task_definition" "userservice" {
-#   family             = local.project_name
-#   task_role_arn      = aws_iam_role.ecs_task_role.arn
-#   execution_role_arn = aws_iam_role.ecs_exec_role.arn
-#   network_mode       = "awsvpc"
-#   memory             = "256"
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
 
-#   container_definitions = jsonencode([{
-#     name      = "userservice",
-#     image     = "${aws_ecr_repository.userservice.repository_url}:latest",
-#     essential = true,
-#     portMappings = [
-#       {
-#         containerPort = 8080,
-#         hostPort      = 8002
-#       }
-#     ],
-
-#     environment = [
-#       { name  = "EXAMPLE",
-#         value = "example"
-#       }
-#     ]
-
-#     logConfiguration = {
-#       logDriver = "awslogs",
-#       options = {
-#         "awslogs-region"        = var.aws_region,
-#         "awslogs-group"         = aws_cloudwatch_log_group.ecs.name,
-#         "awslogs-stream-prefix" = "userservice"
-#       }
-#     },
-#   }])
-# }
-
-# # --- ECS Service ---
-
-# resource "aws_security_group" "ecs_task" {
-#   name_prefix = "ecs-task-sg-"
-#   description = "Allow all traffic within the VPC"
-#   vpc_id      = aws_vpc.main.id
-
-#   ingress {
-#     from_port   = 0
-#     to_port     = 0
-#     protocol    = "-1"
-#     cidr_blocks = [aws_vpc.main.cidr_block]
-#   }
-
-#   egress {
-#     from_port   = 0
-#     to_port     = 0
-#     protocol    = "-1"
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
-# }
-
-# resource "aws_ecs_service" "chatservice" {
-#   name            = "chatservice"
-#   cluster         = aws_ecs_cluster.mig.id
-#   task_definition = aws_ecs_task_definition.chatservice.arn
-#   desired_count   = 2
-
-#   network_configuration {
-#     security_groups = [aws_security_group.ecs_task.id]
-#     subnets         = aws_subnet.public[*].id
-#   }
-
-#   capacity_provider_strategy {
-#     capacity_provider = aws_ecs_capacity_provider.main.name
-#     base              = 1
-#     weight            = 100
-#   }
-
-#   ordered_placement_strategy {
-#     type  = "spread"
-#     field = "attribute:ecs.availability-zone"
-#   }
-
-#   lifecycle {
-#     ignore_changes = [desired_count]
-#   }
-# }
-
-# resource "aws_ecs_service" "userservice" {
-#   name          = "chatservice"
-#   cluster       = aws_ecs_cluster.mig.id
-#   desired_count = 2
-
-#   depends_on = [aws_lb_target_group.chatservice]
-
-
-#   load_balancer {
-#     target_group_arn = aws_lb_target_group.chatservice.arn
-#     container_name   = "chatservice"
-#     container_port   = 8080
-#   }
-# }
-
+  depends_on = [aws_autoscaling_group.ecs]
+}
