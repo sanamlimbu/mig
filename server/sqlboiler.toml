@@ -1,0 +1,14 @@
+output   = "models"
+wipe     = true
+no-tests = true
+add-enum-types = true
+
+[psql]
+  dbname = "postgres"
+  host   = "localhost"
+  port   = 5435
+  user   = "postgres"
+  pass   = "devdev"
+  schema = "public"
+  blacklist = ["migrations", "other"]
+  sslmode = "disable"

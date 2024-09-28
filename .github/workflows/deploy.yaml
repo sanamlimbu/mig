@@ -1,0 +1,85 @@
+name: Deploy mig Docker container to AWS ECS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'server'
+
+env:
+  AWS_REGION: ap-southeast-2
+  ECR_REPOSITORY: mig
+  ECS_SERVICE: mig
+  ECS_CLUSTER: mig-ecs-cluster
+  ECS_TASK_DEFINITION_FAMILY: mig
+  ECS_TASK_DEFINITION_ARN: ${{ secrets.MIG_ECS_TASK_DEFINITION_ARN }}
+  CONTAINER_NAME: mig
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    envionment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ var.AWS_ECR_REPOSITORY_USERSERVICE }}
+          IMAGE_TAG: ${{ github.sha }}
+          MIG_ADDR: ${{ var.MIG_ADDR }}
+          MIG_ENVIRONMENT: ${{ var.MIG_ENVIRONMENT }}
+          MIG_JWT_SECRET: ${{ secrets.MIG_JWT_SECRET }}
+          MIG_DATABASE_USER: ${{ secrets.MIG_DATABASE_USER }}
+          MIG_DATABASE_PASS: ${{ secrets.MIG_DATABASE_PASS }}
+          MIG_DATABASE_HOST: ${{ var.MIG_DATABASE_HOST }}
+          MIG_DATABASE_PORT: ${{ var.MIG_DATABASE_PORT }}
+          MIG_DATABASE_NAME: ${{ var.MIG_DATABASE_NAME }}
+          MIG_DATABASE_APPLICATION_NAME: ${{ var.MIG_DATABASE_APPLICATION_NAME }}
+        run: |
+          docker build \
+            --build-arg MIG_ADDR=$MIG_ADDR \
+            --build-arg MIG_ENVIRONMENT=$MIG_ENVIRONMENT \
+            --build-arg MIG_JWT_SECRET=$MIG_JWT_SECRET \
+            --build-arg MIG_DATABASE_USER=$MIG_DATABASE_USER \
+            --build-arg MIG_DATABASE_PASS=$MIG_DATABASE_PASS \
+            --build-arg MIG_DATABASE_HOST=$MIG_DATABASE_HOST \
+            --build-arg MIG_DATABASE_PORT=$MIG_DATABASE_PORT \
+            --build-arg MIG_DATABASE_NAME=$MIG_DATABASE_NAME \
+            --build-arg MIG_DATABASE_APPLICATION_NAME=$MIG_DATABASE_APPLICATION_NAME \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./server
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition-arn: ${{ env.ECS_TASK_DEFINITION_ARN }}
+          task-definition-family: ${{ env.ECS_TASK_DEFINITION_FAMILY }}
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
