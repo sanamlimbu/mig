@@ -25,6 +25,7 @@ import (
 // User is an object representing the database table.
 type User struct {
 	ID            int64              `boil:"id" json:"id" toml:"id" yaml:"id"`
+	UUID          string             `boil:"uuid" json:"uuid" toml:"uuid" yaml:"uuid"`
 	Username      string             `boil:"username" json:"username" toml:"username" yaml:"username"`
 	WorkflowState UsersWorkflowState `boil:"workflow_state" json:"workflow_state" toml:"workflow_state" yaml:"workflow_state"`
 	CreatedAt     time.Time          `boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
@@ -37,6 +38,7 @@ type User struct {
 
 var UserColumns = struct {
 	ID            string
+	UUID          string
 	Username      string
 	WorkflowState string
 	CreatedAt     string
@@ -44,6 +46,7 @@ var UserColumns = struct {
 	DeletedAt     string
 }{
 	ID:            "id",
+	UUID:          "uuid",
 	Username:      "username",
 	WorkflowState: "workflow_state",
 	CreatedAt:     "created_at",
@@ -53,6 +56,7 @@ var UserColumns = struct {
 
 var UserTableColumns = struct {
 	ID            string
+	UUID          string
 	Username      string
 	WorkflowState string
 	CreatedAt     string
@@ -60,6 +64,7 @@ var UserTableColumns = struct {
 	DeletedAt     string
 }{
 	ID:            "users.id",
+	UUID:          "users.uuid",
 	Username:      "users.username",
 	WorkflowState: "users.workflow_state",
 	CreatedAt:     "users.created_at",
@@ -106,6 +111,7 @@ func (w whereHelperUsersWorkflowState) NIN(slice []UsersWorkflowState) qm.QueryM
 
 var UserWhere = struct {
 	ID            whereHelperint64
+	UUID          whereHelperstring
 	Username      whereHelperstring
 	WorkflowState whereHelperUsersWorkflowState
 	CreatedAt     whereHelpertime_Time
@@ -113,6 +119,7 @@ var UserWhere = struct {
 	DeletedAt     whereHelpernull_Time
 }{
 	ID:            whereHelperint64{field: "\"users\".\"id\""},
+	UUID:          whereHelperstring{field: "\"users\".\"uuid\""},
 	Username:      whereHelperstring{field: "\"users\".\"username\""},
 	WorkflowState: whereHelperUsersWorkflowState{field: "\"users\".\"workflow_state\""},
 	CreatedAt:     whereHelpertime_Time{field: "\"users\".\"created_at\""},
@@ -208,8 +215,8 @@ func (r *userR) GetCreatedByGroups() GroupSlice {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"id", "username", "workflow_state", "created_at", "updated_at", "deleted_at"}
-	userColumnsWithoutDefault = []string{"id", "username", "workflow_state"}
+	userAllColumns            = []string{"id", "uuid", "username", "workflow_state", "created_at", "updated_at", "deleted_at"}
+	userColumnsWithoutDefault = []string{"id", "uuid", "username", "workflow_state"}
 	userColumnsWithDefault    = []string{"created_at", "updated_at", "deleted_at"}
 	userPrimaryKeyColumns     = []string{"id"}
 	userGeneratedColumns      = []string{}
