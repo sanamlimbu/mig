@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'server'
+      - 'server/**'
 
 env:
   AWS_REGION: ap-southeast-2
