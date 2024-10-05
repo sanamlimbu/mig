@@ -4,7 +4,7 @@ no-tests = true
 add-enum-types = true
 
 [psql]
-  dbname = "postgres"
+  dbname = "mig"
   host   = "localhost"
   port   = 5435
   user   = "postgres"
