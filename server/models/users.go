@@ -129,37 +129,35 @@ var UserWhere = struct {
 
 // UserRels is where relationship names are stored.
 var UserRels = struct {
+	CreatedByChatrooms             string
 	RequesterFriendships           string
 	Friendships                    string
 	WorkflowCompletedByFriendships string
-	RequesterGroupUsers            string
-	GroupUsers                     string
-	WorkflowCompletedByGroupUsers  string
-	CreatedByGroups                string
 }{
+	CreatedByChatrooms:             "CreatedByChatrooms",
 	RequesterFriendships:           "RequesterFriendships",
 	Friendships:                    "Friendships",
 	WorkflowCompletedByFriendships: "WorkflowCompletedByFriendships",
-	RequesterGroupUsers:            "RequesterGroupUsers",
-	GroupUsers:                     "GroupUsers",
-	WorkflowCompletedByGroupUsers:  "WorkflowCompletedByGroupUsers",
-	CreatedByGroups:                "CreatedByGroups",
 }
 
 // userR is where relationships are stored.
 type userR struct {
+	CreatedByChatrooms             ChatroomSlice   `boil:"CreatedByChatrooms" json:"CreatedByChatrooms" toml:"CreatedByChatrooms" yaml:"CreatedByChatrooms"`
 	RequesterFriendships           FriendshipSlice `boil:"RequesterFriendships" json:"RequesterFriendships" toml:"RequesterFriendships" yaml:"RequesterFriendships"`
 	Friendships                    FriendshipSlice `boil:"Friendships" json:"Friendships" toml:"Friendships" yaml:"Friendships"`
 	WorkflowCompletedByFriendships FriendshipSlice `boil:"WorkflowCompletedByFriendships" json:"WorkflowCompletedByFriendships" toml:"WorkflowCompletedByFriendships" yaml:"WorkflowCompletedByFriendships"`
-	RequesterGroupUsers            GroupUserSlice  `boil:"RequesterGroupUsers" json:"RequesterGroupUsers" toml:"RequesterGroupUsers" yaml:"RequesterGroupUsers"`
-	GroupUsers                     GroupUserSlice  `boil:"GroupUsers" json:"GroupUsers" toml:"GroupUsers" yaml:"GroupUsers"`
-	WorkflowCompletedByGroupUsers  GroupUserSlice  `boil:"WorkflowCompletedByGroupUsers" json:"WorkflowCompletedByGroupUsers" toml:"WorkflowCompletedByGroupUsers" yaml:"WorkflowCompletedByGroupUsers"`
-	CreatedByGroups                GroupSlice      `boil:"CreatedByGroups" json:"CreatedByGroups" toml:"CreatedByGroups" yaml:"CreatedByGroups"`
 }
 
 // NewStruct creates a new relationship struct
 func (*userR) NewStruct() *userR {
 	return &userR{}
+}
+
+func (r *userR) GetCreatedByChatrooms() ChatroomSlice {
+	if r == nil {
+		return nil
+	}
+	return r.CreatedByChatrooms
 }
 
 func (r *userR) GetRequesterFriendships() FriendshipSlice {
@@ -181,34 +179,6 @@ func (r *userR) GetWorkflowCompletedByFriendships() FriendshipSlice {
 		return nil
 	}
 	return r.WorkflowCompletedByFriendships
-}
-
-func (r *userR) GetRequesterGroupUsers() GroupUserSlice {
-	if r == nil {
-		return nil
-	}
-	return r.RequesterGroupUsers
-}
-
-func (r *userR) GetGroupUsers() GroupUserSlice {
-	if r == nil {
-		return nil
-	}
-	return r.GroupUsers
-}
-
-func (r *userR) GetWorkflowCompletedByGroupUsers() GroupUserSlice {
-	if r == nil {
-		return nil
-	}
-	return r.WorkflowCompletedByGroupUsers
-}
-
-func (r *userR) GetCreatedByGroups() GroupSlice {
-	if r == nil {
-		return nil
-	}
-	return r.CreatedByGroups
 }
 
 // userL is where Load methods for each relationship are stored.
@@ -527,6 +497,20 @@ func (q userQuery) Exists(ctx context.Context, exec boil.ContextExecutor) (bool,
 	return count > 0, nil
 }
 
+// CreatedByChatrooms retrieves all the chatroom's Chatrooms with an executor via created_by column.
+func (o *User) CreatedByChatrooms(mods ...qm.QueryMod) chatroomQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"chatrooms\".\"created_by\"=?", o.ID),
+	)
+
+	return Chatrooms(queryMods...)
+}
+
 // RequesterFriendships retrieves all the friendship's Friendships with an executor via requester_id column.
 func (o *User) RequesterFriendships(mods ...qm.QueryMod) friendshipQuery {
 	var queryMods []qm.QueryMod
@@ -569,60 +553,117 @@ func (o *User) WorkflowCompletedByFriendships(mods ...qm.QueryMod) friendshipQue
 	return Friendships(queryMods...)
 }
 
-// RequesterGroupUsers retrieves all the group_user's GroupUsers with an executor via requester_id column.
-func (o *User) RequesterGroupUsers(mods ...qm.QueryMod) groupUserQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
+// LoadCreatedByChatrooms allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadCreatedByChatrooms(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		var ok bool
+		object, ok = maybeUser.(*User)
+		if !ok {
+			object = new(User)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeUser)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeUser))
+			}
+		}
+	} else {
+		s, ok := maybeUser.(*[]*User)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeUser)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeUser))
+			}
+		}
 	}
 
-	queryMods = append(queryMods,
-		qm.Where("\"group_users\".\"requester_id\"=?", o.ID),
-	)
-
-	return GroupUsers(queryMods...)
-}
-
-// GroupUsers retrieves all the group_user's GroupUsers with an executor.
-func (o *User) GroupUsers(mods ...qm.QueryMod) groupUserQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
+	args := make(map[interface{}]struct{})
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args[object.ID] = struct{}{}
+	} else {
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+			args[obj.ID] = struct{}{}
+		}
 	}
 
-	queryMods = append(queryMods,
-		qm.Where("\"group_users\".\"user_id\"=?", o.ID),
-	)
-
-	return GroupUsers(queryMods...)
-}
-
-// WorkflowCompletedByGroupUsers retrieves all the group_user's GroupUsers with an executor via workflow_completed_by column.
-func (o *User) WorkflowCompletedByGroupUsers(mods ...qm.QueryMod) groupUserQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
+	if len(args) == 0 {
+		return nil
 	}
 
-	queryMods = append(queryMods,
-		qm.Where("\"group_users\".\"workflow_completed_by\"=?", o.ID),
-	)
-
-	return GroupUsers(queryMods...)
-}
-
-// CreatedByGroups retrieves all the group's Groups with an executor via created_by column.
-func (o *User) CreatedByGroups(mods ...qm.QueryMod) groupQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
+	argsSlice := make([]interface{}, len(args))
+	i := 0
+	for arg := range args {
+		argsSlice[i] = arg
+		i++
 	}
 
-	queryMods = append(queryMods,
-		qm.Where("\"groups\".\"created_by\"=?", o.ID),
+	query := NewQuery(
+		qm.From(`chatrooms`),
+		qm.WhereIn(`chatrooms.created_by in ?`, argsSlice...),
 	)
+	if mods != nil {
+		mods.Apply(query)
+	}
 
-	return Groups(queryMods...)
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load chatrooms")
+	}
+
+	var resultSlice []*Chatroom
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice chatrooms")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on chatrooms")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for chatrooms")
+	}
+
+	if len(chatroomAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.CreatedByChatrooms = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &chatroomR{}
+			}
+			foreign.R.CreatedByUser = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.CreatedBy {
+				local.R.CreatedByChatrooms = append(local.R.CreatedByChatrooms, foreign)
+				if foreign.R == nil {
+					foreign.R = &chatroomR{}
+				}
+				foreign.R.CreatedByUser = local
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadRequesterFriendships allows an eager lookup of values, cached into the
@@ -964,455 +1005,56 @@ func (userL) LoadWorkflowCompletedByFriendships(ctx context.Context, e boil.Cont
 	return nil
 }
 
-// LoadRequesterGroupUsers allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadRequesterGroupUsers(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
-	var slice []*User
-	var object *User
-
-	if singular {
-		var ok bool
-		object, ok = maybeUser.(*User)
-		if !ok {
-			object = new(User)
-			ok = queries.SetFromEmbeddedStruct(&object, &maybeUser)
-			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeUser))
+// AddCreatedByChatrooms adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.CreatedByChatrooms.
+// Sets related.R.CreatedByUser appropriately.
+func (o *User) AddCreatedByChatrooms(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Chatroom) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.CreatedBy = o.ID
+			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
 			}
-		}
-	} else {
-		s, ok := maybeUser.(*[]*User)
-		if ok {
-			slice = *s
 		} else {
-			ok = queries.SetFromEmbeddedStruct(&slice, maybeUser)
-			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeUser))
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"chatrooms\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"created_by"}),
+				strmangle.WhereClause("\"", "\"", 2, chatroomPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.IsDebug(ctx) {
+				writer := boil.DebugWriterFrom(ctx)
+				fmt.Fprintln(writer, updateQuery)
+				fmt.Fprintln(writer, values)
 			}
+			if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.CreatedBy = o.ID
 		}
 	}
 
-	args := make(map[interface{}]struct{})
-	if singular {
-		if object.R == nil {
-			object.R = &userR{}
-		}
-		args[object.ID] = struct{}{}
-	} else {
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &userR{}
-			}
-			args[obj.ID] = struct{}{}
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	argsSlice := make([]interface{}, len(args))
-	i := 0
-	for arg := range args {
-		argsSlice[i] = arg
-		i++
-	}
-
-	query := NewQuery(
-		qm.From(`group_users`),
-		qm.WhereIn(`group_users.requester_id in ?`, argsSlice...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.QueryContext(ctx, e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load group_users")
-	}
-
-	var resultSlice []*GroupUser
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice group_users")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on group_users")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for group_users")
-	}
-
-	if len(groupUserAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.RequesterGroupUsers = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &groupUserR{}
-			}
-			foreign.R.Requester = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.RequesterID {
-				local.R.RequesterGroupUsers = append(local.R.RequesterGroupUsers, foreign)
-				if foreign.R == nil {
-					foreign.R = &groupUserR{}
-				}
-				foreign.R.Requester = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadGroupUsers allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadGroupUsers(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
-	var slice []*User
-	var object *User
-
-	if singular {
-		var ok bool
-		object, ok = maybeUser.(*User)
-		if !ok {
-			object = new(User)
-			ok = queries.SetFromEmbeddedStruct(&object, &maybeUser)
-			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeUser))
-			}
+	if o.R == nil {
+		o.R = &userR{
+			CreatedByChatrooms: related,
 		}
 	} else {
-		s, ok := maybeUser.(*[]*User)
-		if ok {
-			slice = *s
+		o.R.CreatedByChatrooms = append(o.R.CreatedByChatrooms, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &chatroomR{
+				CreatedByUser: o,
+			}
 		} else {
-			ok = queries.SetFromEmbeddedStruct(&slice, maybeUser)
-			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeUser))
-			}
+			rel.R.CreatedByUser = o
 		}
 	}
-
-	args := make(map[interface{}]struct{})
-	if singular {
-		if object.R == nil {
-			object.R = &userR{}
-		}
-		args[object.ID] = struct{}{}
-	} else {
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &userR{}
-			}
-			args[obj.ID] = struct{}{}
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	argsSlice := make([]interface{}, len(args))
-	i := 0
-	for arg := range args {
-		argsSlice[i] = arg
-		i++
-	}
-
-	query := NewQuery(
-		qm.From(`group_users`),
-		qm.WhereIn(`group_users.user_id in ?`, argsSlice...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.QueryContext(ctx, e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load group_users")
-	}
-
-	var resultSlice []*GroupUser
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice group_users")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on group_users")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for group_users")
-	}
-
-	if len(groupUserAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.GroupUsers = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &groupUserR{}
-			}
-			foreign.R.User = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.UserID {
-				local.R.GroupUsers = append(local.R.GroupUsers, foreign)
-				if foreign.R == nil {
-					foreign.R = &groupUserR{}
-				}
-				foreign.R.User = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadWorkflowCompletedByGroupUsers allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadWorkflowCompletedByGroupUsers(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
-	var slice []*User
-	var object *User
-
-	if singular {
-		var ok bool
-		object, ok = maybeUser.(*User)
-		if !ok {
-			object = new(User)
-			ok = queries.SetFromEmbeddedStruct(&object, &maybeUser)
-			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeUser))
-			}
-		}
-	} else {
-		s, ok := maybeUser.(*[]*User)
-		if ok {
-			slice = *s
-		} else {
-			ok = queries.SetFromEmbeddedStruct(&slice, maybeUser)
-			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeUser))
-			}
-		}
-	}
-
-	args := make(map[interface{}]struct{})
-	if singular {
-		if object.R == nil {
-			object.R = &userR{}
-		}
-		args[object.ID] = struct{}{}
-	} else {
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &userR{}
-			}
-			args[obj.ID] = struct{}{}
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	argsSlice := make([]interface{}, len(args))
-	i := 0
-	for arg := range args {
-		argsSlice[i] = arg
-		i++
-	}
-
-	query := NewQuery(
-		qm.From(`group_users`),
-		qm.WhereIn(`group_users.workflow_completed_by in ?`, argsSlice...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.QueryContext(ctx, e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load group_users")
-	}
-
-	var resultSlice []*GroupUser
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice group_users")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on group_users")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for group_users")
-	}
-
-	if len(groupUserAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.WorkflowCompletedByGroupUsers = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &groupUserR{}
-			}
-			foreign.R.WorkflowCompletedByUser = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.WorkflowCompletedBy {
-				local.R.WorkflowCompletedByGroupUsers = append(local.R.WorkflowCompletedByGroupUsers, foreign)
-				if foreign.R == nil {
-					foreign.R = &groupUserR{}
-				}
-				foreign.R.WorkflowCompletedByUser = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadCreatedByGroups allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadCreatedByGroups(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
-	var slice []*User
-	var object *User
-
-	if singular {
-		var ok bool
-		object, ok = maybeUser.(*User)
-		if !ok {
-			object = new(User)
-			ok = queries.SetFromEmbeddedStruct(&object, &maybeUser)
-			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeUser))
-			}
-		}
-	} else {
-		s, ok := maybeUser.(*[]*User)
-		if ok {
-			slice = *s
-		} else {
-			ok = queries.SetFromEmbeddedStruct(&slice, maybeUser)
-			if !ok {
-				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeUser))
-			}
-		}
-	}
-
-	args := make(map[interface{}]struct{})
-	if singular {
-		if object.R == nil {
-			object.R = &userR{}
-		}
-		args[object.ID] = struct{}{}
-	} else {
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &userR{}
-			}
-			args[obj.ID] = struct{}{}
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	argsSlice := make([]interface{}, len(args))
-	i := 0
-	for arg := range args {
-		argsSlice[i] = arg
-		i++
-	}
-
-	query := NewQuery(
-		qm.From(`groups`),
-		qm.WhereIn(`groups.created_by in ?`, argsSlice...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.QueryContext(ctx, e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load groups")
-	}
-
-	var resultSlice []*Group
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice groups")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on groups")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for groups")
-	}
-
-	if len(groupAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.CreatedByGroups = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &groupR{}
-			}
-			foreign.R.CreatedByUser = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.CreatedBy {
-				local.R.CreatedByGroups = append(local.R.CreatedByGroups, foreign)
-				if foreign.R == nil {
-					foreign.R = &groupR{}
-				}
-				foreign.R.CreatedByUser = local
-				break
-			}
-		}
-	}
-
 	return nil
 }
 
@@ -1570,218 +1212,6 @@ func (o *User) AddWorkflowCompletedByFriendships(ctx context.Context, exec boil.
 			}
 		} else {
 			rel.R.WorkflowCompletedByUser = o
-		}
-	}
-	return nil
-}
-
-// AddRequesterGroupUsers adds the given related objects to the existing relationships
-// of the user, optionally inserting them as new records.
-// Appends related to o.R.RequesterGroupUsers.
-// Sets related.R.Requester appropriately.
-func (o *User) AddRequesterGroupUsers(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*GroupUser) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.RequesterID = o.ID
-			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"group_users\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"requester_id"}),
-				strmangle.WhereClause("\"", "\"", 2, groupUserPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.IsDebug(ctx) {
-				writer := boil.DebugWriterFrom(ctx)
-				fmt.Fprintln(writer, updateQuery)
-				fmt.Fprintln(writer, values)
-			}
-			if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.RequesterID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &userR{
-			RequesterGroupUsers: related,
-		}
-	} else {
-		o.R.RequesterGroupUsers = append(o.R.RequesterGroupUsers, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &groupUserR{
-				Requester: o,
-			}
-		} else {
-			rel.R.Requester = o
-		}
-	}
-	return nil
-}
-
-// AddGroupUsers adds the given related objects to the existing relationships
-// of the user, optionally inserting them as new records.
-// Appends related to o.R.GroupUsers.
-// Sets related.R.User appropriately.
-func (o *User) AddGroupUsers(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*GroupUser) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.UserID = o.ID
-			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"group_users\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"user_id"}),
-				strmangle.WhereClause("\"", "\"", 2, groupUserPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.IsDebug(ctx) {
-				writer := boil.DebugWriterFrom(ctx)
-				fmt.Fprintln(writer, updateQuery)
-				fmt.Fprintln(writer, values)
-			}
-			if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.UserID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &userR{
-			GroupUsers: related,
-		}
-	} else {
-		o.R.GroupUsers = append(o.R.GroupUsers, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &groupUserR{
-				User: o,
-			}
-		} else {
-			rel.R.User = o
-		}
-	}
-	return nil
-}
-
-// AddWorkflowCompletedByGroupUsers adds the given related objects to the existing relationships
-// of the user, optionally inserting them as new records.
-// Appends related to o.R.WorkflowCompletedByGroupUsers.
-// Sets related.R.WorkflowCompletedByUser appropriately.
-func (o *User) AddWorkflowCompletedByGroupUsers(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*GroupUser) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.WorkflowCompletedBy = o.ID
-			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"group_users\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"workflow_completed_by"}),
-				strmangle.WhereClause("\"", "\"", 2, groupUserPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.IsDebug(ctx) {
-				writer := boil.DebugWriterFrom(ctx)
-				fmt.Fprintln(writer, updateQuery)
-				fmt.Fprintln(writer, values)
-			}
-			if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.WorkflowCompletedBy = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &userR{
-			WorkflowCompletedByGroupUsers: related,
-		}
-	} else {
-		o.R.WorkflowCompletedByGroupUsers = append(o.R.WorkflowCompletedByGroupUsers, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &groupUserR{
-				WorkflowCompletedByUser: o,
-			}
-		} else {
-			rel.R.WorkflowCompletedByUser = o
-		}
-	}
-	return nil
-}
-
-// AddCreatedByGroups adds the given related objects to the existing relationships
-// of the user, optionally inserting them as new records.
-// Appends related to o.R.CreatedByGroups.
-// Sets related.R.CreatedByUser appropriately.
-func (o *User) AddCreatedByGroups(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Group) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.CreatedBy = o.ID
-			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"groups\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"created_by"}),
-				strmangle.WhereClause("\"", "\"", 2, groupPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.IsDebug(ctx) {
-				writer := boil.DebugWriterFrom(ctx)
-				fmt.Fprintln(writer, updateQuery)
-				fmt.Fprintln(writer, values)
-			}
-			if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.CreatedBy = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &userR{
-			CreatedByGroups: related,
-		}
-	} else {
-		o.R.CreatedByGroups = append(o.R.CreatedByGroups, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &groupR{
-				CreatedByUser: o,
-			}
-		} else {
-			rel.R.CreatedByUser = o
 		}
 	}
 	return nil

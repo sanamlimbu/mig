@@ -10,18 +10,18 @@ import (
 )
 
 type APIController struct {
-	db         *sql.DB
-	auther     Auther
-	hub        *Hub
-	groupsRepo GroupsRepository
+	db               *sql.DB
+	auther           Auther
+	hub              *Hub
+	chatroomsService *ChatroomsService
 }
 
-func NewAPIController(db *sql.DB, auther Auther, hub *Hub, groupsRepo GroupsRepository) *APIController {
+func NewAPIController(db *sql.DB, auther Auther, hub *Hub, chatroomsService *ChatroomsService) *APIController {
 	return &APIController{
-		db:         db,
-		auther:     auther,
-		hub:        hub,
-		groupsRepo: groupsRepo,
+		db:               db,
+		auther:           auther,
+		hub:              hub,
+		chatroomsService: chatroomsService,
 	}
 }
 

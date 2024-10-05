@@ -130,12 +130,14 @@ func serve(c *cli.Context) error {
 
 	auther := mig.NewAuther(jwtSecret, addr)
 
-	groupsRepo := mig.NewGroupsRepositoryPostgreSQL(db)
+	chatroomsRepo := mig.NewChatroomsRepositoryPostgreSQL(db)
+
+	chatroomsService := mig.NewChatroomsService(chatroomsRepo)
 
 	hub := mig.NewHub(nats)
 	go hub.Run(c.Context)
 
-	controller := mig.NewAPIController(db, auther, hub, groupsRepo)
+	controller := mig.NewAPIController(db, auther, hub, chatroomsService)
 
 	router := mig.NewRouter(controller)
 

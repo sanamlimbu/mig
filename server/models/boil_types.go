@@ -51,6 +51,86 @@ func makeCacheKey(cols boil.Columns, nzDefaults []string) string {
 	return str
 }
 
+type ChatroomsWorkflowState string
+
+// Enum values for ChatroomsWorkflowState
+const (
+	ChatroomsWorkflowStateActive  ChatroomsWorkflowState = "active"
+	ChatroomsWorkflowStateDeleted ChatroomsWorkflowState = "deleted"
+)
+
+func AllChatroomsWorkflowState() []ChatroomsWorkflowState {
+	return []ChatroomsWorkflowState{
+		ChatroomsWorkflowStateActive,
+		ChatroomsWorkflowStateDeleted,
+	}
+}
+
+func (e ChatroomsWorkflowState) IsValid() error {
+	switch e {
+	case ChatroomsWorkflowStateActive, ChatroomsWorkflowStateDeleted:
+		return nil
+	default:
+		return errors.New("enum is not valid")
+	}
+}
+
+func (e ChatroomsWorkflowState) String() string {
+	return string(e)
+}
+
+func (e ChatroomsWorkflowState) Ordinal() int {
+	switch e {
+	case ChatroomsWorkflowStateActive:
+		return 0
+	case ChatroomsWorkflowStateDeleted:
+		return 1
+
+	default:
+		panic(errors.New("enum is not valid"))
+	}
+}
+
+type ChatroomsType string
+
+// Enum values for ChatroomsType
+const (
+	ChatroomsTypePrivate ChatroomsType = "private"
+	ChatroomsTypePublic  ChatroomsType = "public"
+)
+
+func AllChatroomsType() []ChatroomsType {
+	return []ChatroomsType{
+		ChatroomsTypePrivate,
+		ChatroomsTypePublic,
+	}
+}
+
+func (e ChatroomsType) IsValid() error {
+	switch e {
+	case ChatroomsTypePrivate, ChatroomsTypePublic:
+		return nil
+	default:
+		return errors.New("enum is not valid")
+	}
+}
+
+func (e ChatroomsType) String() string {
+	return string(e)
+}
+
+func (e ChatroomsType) Ordinal() int {
+	switch e {
+	case ChatroomsTypePrivate:
+		return 0
+	case ChatroomsTypePublic:
+		return 1
+
+	default:
+		panic(errors.New("enum is not valid"))
+	}
+}
+
 type FriendshipsWorkflowState string
 
 // Enum values for FriendshipsWorkflowState
@@ -93,134 +173,6 @@ func (e FriendshipsWorkflowState) Ordinal() int {
 		return 2
 	case FriendshipsWorkflowStateCancelled:
 		return 3
-
-	default:
-		panic(errors.New("enum is not valid"))
-	}
-}
-
-type GroupUsersWorkflowState string
-
-// Enum values for GroupUsersWorkflowState
-const (
-	GroupUsersWorkflowStatePending   GroupUsersWorkflowState = "pending"
-	GroupUsersWorkflowStateActive    GroupUsersWorkflowState = "active"
-	GroupUsersWorkflowStateRejected  GroupUsersWorkflowState = "rejected"
-	GroupUsersWorkflowStateCancelled GroupUsersWorkflowState = "cancelled"
-)
-
-func AllGroupUsersWorkflowState() []GroupUsersWorkflowState {
-	return []GroupUsersWorkflowState{
-		GroupUsersWorkflowStatePending,
-		GroupUsersWorkflowStateActive,
-		GroupUsersWorkflowStateRejected,
-		GroupUsersWorkflowStateCancelled,
-	}
-}
-
-func (e GroupUsersWorkflowState) IsValid() error {
-	switch e {
-	case GroupUsersWorkflowStatePending, GroupUsersWorkflowStateActive, GroupUsersWorkflowStateRejected, GroupUsersWorkflowStateCancelled:
-		return nil
-	default:
-		return errors.New("enum is not valid")
-	}
-}
-
-func (e GroupUsersWorkflowState) String() string {
-	return string(e)
-}
-
-func (e GroupUsersWorkflowState) Ordinal() int {
-	switch e {
-	case GroupUsersWorkflowStatePending:
-		return 0
-	case GroupUsersWorkflowStateActive:
-		return 1
-	case GroupUsersWorkflowStateRejected:
-		return 2
-	case GroupUsersWorkflowStateCancelled:
-		return 3
-
-	default:
-		panic(errors.New("enum is not valid"))
-	}
-}
-
-type GroupsWorkflowState string
-
-// Enum values for GroupsWorkflowState
-const (
-	GroupsWorkflowStateActive  GroupsWorkflowState = "active"
-	GroupsWorkflowStateDeleted GroupsWorkflowState = "deleted"
-)
-
-func AllGroupsWorkflowState() []GroupsWorkflowState {
-	return []GroupsWorkflowState{
-		GroupsWorkflowStateActive,
-		GroupsWorkflowStateDeleted,
-	}
-}
-
-func (e GroupsWorkflowState) IsValid() error {
-	switch e {
-	case GroupsWorkflowStateActive, GroupsWorkflowStateDeleted:
-		return nil
-	default:
-		return errors.New("enum is not valid")
-	}
-}
-
-func (e GroupsWorkflowState) String() string {
-	return string(e)
-}
-
-func (e GroupsWorkflowState) Ordinal() int {
-	switch e {
-	case GroupsWorkflowStateActive:
-		return 0
-	case GroupsWorkflowStateDeleted:
-		return 1
-
-	default:
-		panic(errors.New("enum is not valid"))
-	}
-}
-
-type GroupsType string
-
-// Enum values for GroupsType
-const (
-	GroupsTypePrivate GroupsType = "private"
-	GroupsTypePublic  GroupsType = "public"
-)
-
-func AllGroupsType() []GroupsType {
-	return []GroupsType{
-		GroupsTypePrivate,
-		GroupsTypePublic,
-	}
-}
-
-func (e GroupsType) IsValid() error {
-	switch e {
-	case GroupsTypePrivate, GroupsTypePublic:
-		return nil
-	default:
-		return errors.New("enum is not valid")
-	}
-}
-
-func (e GroupsType) String() string {
-	return string(e)
-}
-
-func (e GroupsType) Ordinal() int {
-	switch e {
-	case GroupsTypePrivate:
-		return 0
-	case GroupsTypePublic:
-		return 1
 
 	default:
 		panic(errors.New("enum is not valid"))

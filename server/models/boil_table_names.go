@@ -4,15 +4,13 @@
 package models
 
 var TableNames = struct {
+	Chatrooms        string
 	Friendships      string
-	GroupUsers       string
-	Groups           string
 	SchemaMigrations string
 	Users            string
 }{
+	Chatrooms:        "chatrooms",
 	Friendships:      "friendships",
-	GroupUsers:       "group_users",
-	Groups:           "groups",
 	SchemaMigrations: "schema_migrations",
 	Users:            "users",
 }

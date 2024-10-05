@@ -31,7 +31,8 @@ func NewRouter(c *APIController) *chi.Mux {
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/users/{id}/friends", withError(withPagination(c.getFriends)))
-		r.Get("/users/{id}/groups", withError(withPagination(c.getGroups)))
+
+		r.Get("/chatrooms", withError(withPagination(c.getChatrooms)))
 	})
 
 	return r
