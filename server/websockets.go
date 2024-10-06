@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -43,6 +44,7 @@ type Hub struct {
 	clients    map[int64][]*Client
 	register   chan *Client
 	unregister chan *Client
+	mu         sync.RWMutex
 }
 
 func NewHub(broker MessageBroker) *Hub {
@@ -60,22 +62,32 @@ func (h *Hub) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case client := <-h.register:
-			h.clients[client.user.ID] = append(h.clients[client.user.ID], client)
+			go h.addClient(client)
 		case client := <-h.unregister:
-			h.removeClient(client)
+			go h.removeClient(client)
 		}
 	}
 }
 
+func (h *Hub) addClient(client *Client) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	h.clients[client.user.ID] = append(h.clients[client.user.ID], client)
+}
+
 func (h *Hub) removeClient(client *Client) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	if _, ok := h.clients[client.user.ID]; ok {
 		h.clients[client.user.ID] = slices.DeleteFunc(h.clients[client.user.ID], func(c *Client) bool {
 			return client == c
 		})
+
 		if len(h.clients[client.user.ID]) == 0 {
 			delete(h.clients, client.user.ID)
 		}
-		close(client.message)
 	}
 }
 
