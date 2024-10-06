@@ -24,7 +24,7 @@ export interface Message {
   sender_id: number;
   sender_name: string;
   sender_workflow_state: UsersWorkflowState;
-  receiver_id: number;
+  recipient_id: number;
   receiver_name: string;
   receiver_workflow_state: UsersWorkflowState | GroupsWorkflowState;
 }

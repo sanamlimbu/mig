@@ -31,7 +31,7 @@ export default function Chat() {
     if (msg && readyState === ReadyState.OPEN) {
       sendJsonMessage({
         sender_id: 1,
-        receiver_id: 1,
+        recipient_id: 1,
         message_type: 'private',
         content: msg,
       });
@@ -56,7 +56,7 @@ export default function Chat() {
           sender_id: 1,
           sender_name: 'sudosanam',
           sender_workflow_state: 'active',
-          receiver_id: 1,
+          recipient_id: 1,
           receiver_name: 'hello',
           receiver_workflow_state: 'active',
           created_at: new Date(),
@@ -71,7 +71,7 @@ export default function Chat() {
           sender_id: 1,
           sender_name: 'sudosanam',
           sender_workflow_state: 'active',
-          receiver_id: 1,
+          recipient_id: 1,
           receiver_name: 'hello',
           receiver_workflow_state: 'active',
           created_at: new Date(),
