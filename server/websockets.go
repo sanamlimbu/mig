@@ -3,6 +3,7 @@ package mig
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"slices"
 	"time"
@@ -35,6 +36,8 @@ type Client struct {
 	message chan Message
 }
 
+const bufferSize int = 100
+
 type Hub struct {
 	broker     MessageBroker
 	clients    map[int64][]*Client
@@ -46,8 +49,8 @@ func NewHub(broker MessageBroker) *Hub {
 	return &Hub{
 		broker:     broker,
 		clients:    make(map[int64][]*Client),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
+		register:   make(chan *Client, bufferSize),
+		unregister: make(chan *Client, bufferSize),
 	}
 }
 
@@ -59,22 +62,24 @@ func (h *Hub) Run(ctx context.Context) {
 		case client := <-h.register:
 			h.clients[client.user.ID] = append(h.clients[client.user.ID], client)
 		case client := <-h.unregister:
-			if _, ok := h.clients[client.user.ID]; ok {
-				h.clients[client.user.ID] = slices.DeleteFunc(h.clients[client.user.ID], func(c *Client) bool {
-					return client == c
-				})
-
-				if len(h.clients[client.user.ID]) == 0 {
-					delete(h.clients, client.user.ID)
-				}
-
-				close(client.message)
-			}
+			h.removeClient(client)
 		}
 	}
 }
 
-func (h *Hub) ServeWebSockets(user User, w http.ResponseWriter, r *http.Request) {
+func (h *Hub) removeClient(client *Client) {
+	if _, ok := h.clients[client.user.ID]; ok {
+		h.clients[client.user.ID] = slices.DeleteFunc(h.clients[client.user.ID], func(c *Client) bool {
+			return client == c
+		})
+		if len(h.clients[client.user.ID]) == 0 {
+			delete(h.clients, client.user.ID)
+		}
+		close(client.message)
+	}
+}
+
+func (h *Hub) serveWebSockets(user User, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 
 	if err != nil {
@@ -95,12 +100,24 @@ func (h *Hub) ServeWebSockets(user User, w http.ResponseWriter, r *http.Request)
 	go client.write()
 }
 
-func handleKafkaMsgReceived(msg []byte) error {
-	var payload Message
+func (h *Hub) handleMessageFromBroker(topic MessageBrokerTopic, msg []byte) error {
+	switch topic {
+	case MessageCreatedTopic:
+		{
+			var payload Message
+			if err := json.Unmarshal(msg, &payload); err != nil {
+				log.Error().Msg(err.Error())
+				return err
+			}
 
-	err := json.Unmarshal(msg, &payload)
+			fmt.Println(payload.RecipientID)
 
-	return err
+			for _, client := range h.clients[payload.RecipientID] {
+				client.message <- payload
+			}
+		}
+	}
+	return nil
 }
 
 // reads pong message and JSON payload from websocket connection
@@ -118,7 +135,7 @@ func (c *Client) read() {
 	})
 
 	for {
-		_, msg, err := c.conn.ReadMessage()
+		_, payload, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Error().Msg(err.Error())
@@ -127,16 +144,10 @@ func (c *Client) read() {
 			break
 		}
 
-		var payload Message
-		if err := json.Unmarshal(msg, &payload); err != nil {
+		err = c.hub.broker.publish(MessageCreatedTopic, payload)
+		if err != nil {
 			log.Error().Msg(err.Error())
-
-			c.conn.WriteMessage(websocket.TextMessage, []byte(`{"code":"00001","message":"JSON failed, please contact IT."}`))
-
-			continue
 		}
-
-		c.hub.broker.publish("mig.messages.created", payload)
 	}
 }
 

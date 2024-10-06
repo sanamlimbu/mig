@@ -10,21 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type MessageType string
-
-const (
-	MessageTypePrivate MessageType = "private"
-	MessageTypeGroup   MessageType = "group"
-)
-
-type Message struct {
-	ID          int64       `json:"id"`
-	SenderID    int64       `json:"sender_id"`
-	RecipientID int64       `json:"recipient_id"` // user id or group id
-	Content     string      `json:"content"`
-	MessageType MessageType `json:"message_type"`
-}
-
 type Kafka struct {
 	producer sarama.SyncProducer
 	consumer sarama.ConsumerGroup

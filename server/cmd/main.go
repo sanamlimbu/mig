@@ -12,8 +12,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/IBM/sarama"
-	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
 )
 
@@ -55,11 +53,7 @@ func main() {
 					&cli.StringFlag{Name: "database_name", Value: "postgres", EnvVars: []string{"MIG_DATABASE_NAME"}, Usage: "database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{"MIG_DATABASE_APPLICATION_NAME"}, Usage: "application name"},
 
-					&cli.StringFlag{Name: "kafka_brokers", Value: "localhost:9092", EnvVars: []string{"MIG_KAFKA_BROKERS"}, Usage: "Kafka brokers to connect to, as a comma separated list"},
-					&cli.StringFlag{Name: "kafka_group", Value: uuid.NewString(), EnvVars: []string{"MIG_KAFKA_GROUP"}, Usage: "Kafka consumer group definition"},
-					&cli.StringFlag{Name: "kafka_topics", Value: "private,group", EnvVars: []string{"MIG_KAFKA_TOPICS"}, Usage: "Kafka topics, as a comma separated list"},
-					&cli.StringFlag{Name: "kafka_version", Value: sarama.DefaultVersion.String(), EnvVars: []string{"MIG_KAFKA_VERSION"}, Usage: "Kafka cluster version"},
-					&cli.StringFlag{Name: "kafka_assignor", Value: "range", EnvVars: []string{"MIG_KAFKA_ASSIGNOR"}, Usage: "Kafka consumer group partition assignment strategy (range, roundrobin, sticky)"},
+					&cli.StringFlag{Name: "nats_secret", Value: "my-nats-secret", EnvVars: []string{"MIG_NATS_SECRET"}, Usage: "NATS secret token"},
 				},
 				Action: func(c *cli.Context) error {
 					err := serve(c)
@@ -121,7 +115,17 @@ func serve(c *cli.Context) error {
 		return fmt.Errorf("missing env: MIG_DATABASE_APPLICATION_NAME")
 	}
 
-	nats, err := mig.NewNats("ws", "mig", "devdev", "localhost", "89")
+	natsSecret := c.String("nats_secret")
+	if natsSecret == "" {
+		return fmt.Errorf("missing env: MIG_NATS_SECRET")
+	}
+
+	natsUrl := fmt.Sprintf("nats://%s@localhost:4222", natsSecret)
+	nats, err := mig.NewNats(natsUrl)
+	if err != nil {
+		return err
+	}
+	defer nats.Close()
 
 	db, err := mig.NewDBConnection(dbUser, dbPass, dbHost, dbPort, dbName, dbAppName, version)
 	if err != nil {
@@ -131,13 +135,17 @@ func serve(c *cli.Context) error {
 	auther := mig.NewAuther(jwtSecret, addr)
 
 	chatroomsRepo := mig.NewChatroomsRepositoryPostgreSQL(db)
-
 	chatroomsService := mig.NewChatroomsService(chatroomsRepo)
+
+	usersRepo := mig.NewUsersRepositoryPostgreSQL(db)
+	usersService := mig.NewUsersService(usersRepo)
 
 	hub := mig.NewHub(nats)
 	go hub.Run(c.Context)
 
-	controller := mig.NewAPIController(db, auther, hub, chatroomsService)
+	nats.Subscribe(mig.MessageCreatedTopic, hub)
+
+	controller := mig.NewAPIController(auther, hub, chatroomsService, usersService)
 
 	router := mig.NewRouter(controller)
 

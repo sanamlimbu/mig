@@ -27,7 +27,7 @@ func NewRouter(c *APIController) *chi.Mux {
 		MaxAge:           300,
 	}))
 
-	r.HandleFunc("/ws", withAuth(c, c.hub.ServeWebSockets))
+	r.HandleFunc("/ws", withAuth(c, c.hub.serveWebSockets))
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/users/{id}/friends", withError(withPagination(c.getFriends)))

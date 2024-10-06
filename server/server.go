@@ -1,7 +1,6 @@
 package mig
 
 import (
-	"database/sql"
 	"fmt"
 	"mig/models"
 	"time"
@@ -10,18 +9,18 @@ import (
 )
 
 type APIController struct {
-	db               *sql.DB
 	auther           Auther
 	hub              *Hub
 	chatroomsService *ChatroomsService
+	usersService     *UsersService
 }
 
-func NewAPIController(db *sql.DB, auther Auther, hub *Hub, chatroomsService *ChatroomsService) *APIController {
+func NewAPIController(auther Auther, hub *Hub, chatroomsService *ChatroomsService, usersService *UsersService) *APIController {
 	return &APIController{
-		db:               db,
 		auther:           auther,
 		hub:              hub,
 		chatroomsService: chatroomsService,
+		usersService:     usersService,
 	}
 }
 

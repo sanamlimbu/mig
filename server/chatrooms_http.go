@@ -9,10 +9,6 @@ import (
 	"github.com/go-chi/chi"
 )
 
-type GetChatroomsRequest struct {
-	pagination Pagination
-}
-
 // query params
 //   - search_term : string (required)
 //   - state[] : array of states - 'active','deleted' (required)

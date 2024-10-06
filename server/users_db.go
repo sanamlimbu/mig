@@ -47,6 +47,7 @@ func FriendshipsWorkflowStates(states []string) []models.FriendshipsWorkflowStat
 type UsersRepository interface {
 	getChatroomsByCreatorIDAndWorkflowStates(ctx context.Context, creatorID int64, states []string, paination Pagination) ([]Chatroom, error)
 	getFriendsByWorkflowStates(ctx context.Context, userID int64, states []string, pagination Pagination) ([]User, error)
+	getFriendByID(ctx context.Context, userID, friendID int64) (User, error)
 }
 
 type UsersRepositoryPostgreSQL struct {
@@ -115,4 +116,8 @@ func (r *UsersRepositoryPostgreSQL) getFriendsByWorkflowStates(ctx context.Conte
 	}
 
 	return UsersFromDBModel(results[start:end]), nil
+}
+
+func (r *UsersRepositoryPostgreSQL) getFriendByID(ctx context.Context, userID, friendID int64) (User, error) {
+	return User{}, nil
 }
