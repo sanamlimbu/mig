@@ -3,7 +3,6 @@ package mig
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"slices"
 	"sync"
@@ -41,16 +40,14 @@ const bufferSize int = 100
 
 type WsHub struct {
 	broker     MessageBroker
-	clients    map[int64][]*Client
+	clients    sync.Map
 	register   chan *Client
 	unregister chan *Client
-	mu         sync.RWMutex
 }
 
 func NewWsHub(broker MessageBroker) *WsHub {
 	return &WsHub{
 		broker:     broker,
-		clients:    make(map[int64][]*Client),
 		register:   make(chan *Client, bufferSize),
 		unregister: make(chan *Client, bufferSize),
 	}
@@ -62,33 +59,45 @@ func (h *WsHub) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case client := <-h.register:
-			go h.addClient(client)
+			h.addClient(client)
 		case client := <-h.unregister:
-			go h.removeClient(client)
+			h.removeClient(client)
 		}
 	}
 }
 
 func (h *WsHub) addClient(client *Client) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	var clients []*Client
 
-	h.clients[client.user.ID] = append(h.clients[client.user.ID], client)
+	userClients, ok := h.clients.Load(client.user.ID)
+	if ok {
+		clients = userClients.([]*Client)
+	}
+
+	clients = append(clients, client)
+
+	h.clients.Store(client.user.ID, clients)
 }
 
 func (h *WsHub) removeClient(client *Client) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	if _, ok := h.clients[client.user.ID]; ok {
-		h.clients[client.user.ID] = slices.DeleteFunc(h.clients[client.user.ID], func(c *Client) bool {
-			return client == c
-		})
-
-		if len(h.clients[client.user.ID]) == 0 {
-			delete(h.clients, client.user.ID)
-		}
+	userClients, ok := h.clients.Load(client.user.ID)
+	if !ok {
+		return
 	}
+
+	clients := userClients.([]*Client)
+
+	clients = slices.DeleteFunc(clients, func(c *Client) bool {
+		return c == client
+	})
+
+	if len(clients) == 0 {
+		h.clients.Delete(client.user.ID)
+	} else {
+		h.clients.Store(client.user.ID, clients)
+	}
+
+	close(client.message)
 }
 
 func (h *WsHub) serveWebSockets(user User, w http.ResponseWriter, r *http.Request) {
@@ -103,7 +112,7 @@ func (h *WsHub) serveWebSockets(user User, w http.ResponseWriter, r *http.Reques
 		hub:     h,
 		user:    user,
 		conn:    conn,
-		message: make(chan Message),
+		message: make(chan Message, bufferSize),
 	}
 
 	client.hub.register <- client
@@ -122,13 +131,16 @@ func (h *WsHub) handleMessageFromBroker(topic MessageBrokerTopic, msg []byte) er
 				return err
 			}
 
-			fmt.Println(payload.RecipientID)
-
-			for _, client := range h.clients[payload.RecipientID] {
-				client.message <- payload
+			if clients, ok := h.clients.Load(payload.RecipientID); ok {
+				for _, client := range clients.([]*Client) {
+					go func(client *Client) {
+						client.message <- payload
+					}(client)
+				}
 			}
 		}
 	}
+
 	return nil
 }
 
