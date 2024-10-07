@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"mig"
+	mig "mig/internal"
 	"net/http"
 	"os"
 	"os/signal"
