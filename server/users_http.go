@@ -11,7 +11,7 @@ import (
 
 // query params
 //   - state[] : array of states - 'pending','active', 'rejected', 'cancelled' (required)
-func (c *APIController) getFriends(w http.ResponseWriter, r *http.Request, pagination Pagination) (int, error) {
+func (c *HttpApiController) getFriends(w http.ResponseWriter, r *http.Request, pagination Pagination) (int, error) {
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		return http.StatusBadRequest, fmt.Errorf("invalid user id: %d", userID)

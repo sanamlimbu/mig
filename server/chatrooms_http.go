@@ -12,7 +12,7 @@ import (
 // query params
 //   - search_term : string (required)
 //   - state[] : array of states - 'active','deleted' (required)
-func (c *APIController) getChatrooms(w http.ResponseWriter, r *http.Request, pagination Pagination) (int, error) {
+func (c *HttpApiController) getChatrooms(w http.ResponseWriter, r *http.Request, pagination Pagination) (int, error) {
 	searchTerm := chi.URLParam(r, "search_term")
 	if searchTerm == "" {
 		return http.StatusBadRequest, fmt.Errorf("missing search_term params")

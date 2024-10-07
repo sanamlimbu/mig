@@ -8,11 +8,20 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-type User struct {
-	ID            int64  `json:"id"`
-	UUID          string `json:"uuid"`
-	Username      string `json:"username"`
-	WorkflowState string `json:"workflow_state"`
+type UsersRepository interface {
+	getChatroomsByCreatorIDAndWorkflowStates(ctx context.Context, creatorID int64, states []string, paination Pagination) ([]Chatroom, error)
+	getFriendsByWorkflowStates(ctx context.Context, userID int64, states []string, pagination Pagination) ([]User, error)
+	getFriendByID(ctx context.Context, userID, friendID int64) (User, error)
+}
+
+type UsersRepositoryPostgreSQL struct {
+	db *sql.DB
+}
+
+func NewUsersRepositoryPostgreSQL(db *sql.DB) *UsersRepositoryPostgreSQL {
+	return &UsersRepositoryPostgreSQL{
+		db: db,
+	}
 }
 
 func UserFromDBModel(u models.User) User {
@@ -42,22 +51,6 @@ func FriendshipsWorkflowStates(states []string) []models.FriendshipsWorkflowStat
 	}
 
 	return ws
-}
-
-type UsersRepository interface {
-	getChatroomsByCreatorIDAndWorkflowStates(ctx context.Context, creatorID int64, states []string, paination Pagination) ([]Chatroom, error)
-	getFriendsByWorkflowStates(ctx context.Context, userID int64, states []string, pagination Pagination) ([]User, error)
-	getFriendByID(ctx context.Context, userID, friendID int64) (User, error)
-}
-
-type UsersRepositoryPostgreSQL struct {
-	db *sql.DB
-}
-
-func NewUsersRepositoryPostgreSQL(db *sql.DB) *UsersRepositoryPostgreSQL {
-	return &UsersRepositoryPostgreSQL{
-		db: db,
-	}
 }
 
 func (r *UsersRepositoryPostgreSQL) getChatroomsByCreatorIDAndWorkflowStates(ctx context.Context, creatorID int64, states []string, pagination Pagination) ([]Chatroom, error) {

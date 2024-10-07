@@ -31,7 +31,7 @@ var upgrader = websocket.Upgrader{
 }
 
 type Client struct {
-	hub     *Hub
+	hub     *WsHub
 	user    User
 	conn    *websocket.Conn
 	message chan Message
@@ -39,7 +39,7 @@ type Client struct {
 
 const bufferSize int = 100
 
-type Hub struct {
+type WsHub struct {
 	broker     MessageBroker
 	clients    map[int64][]*Client
 	register   chan *Client
@@ -47,8 +47,8 @@ type Hub struct {
 	mu         sync.RWMutex
 }
 
-func NewHub(broker MessageBroker) *Hub {
-	return &Hub{
+func NewWsHub(broker MessageBroker) *WsHub {
+	return &WsHub{
 		broker:     broker,
 		clients:    make(map[int64][]*Client),
 		register:   make(chan *Client, bufferSize),
@@ -56,7 +56,7 @@ func NewHub(broker MessageBroker) *Hub {
 	}
 }
 
-func (h *Hub) Run(ctx context.Context) {
+func (h *WsHub) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -69,14 +69,14 @@ func (h *Hub) Run(ctx context.Context) {
 	}
 }
 
-func (h *Hub) addClient(client *Client) {
+func (h *WsHub) addClient(client *Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
 	h.clients[client.user.ID] = append(h.clients[client.user.ID], client)
 }
 
-func (h *Hub) removeClient(client *Client) {
+func (h *WsHub) removeClient(client *Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -91,7 +91,7 @@ func (h *Hub) removeClient(client *Client) {
 	}
 }
 
-func (h *Hub) serveWebSockets(user User, w http.ResponseWriter, r *http.Request) {
+func (h *WsHub) serveWebSockets(user User, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 
 	if err != nil {
@@ -112,7 +112,7 @@ func (h *Hub) serveWebSockets(user User, w http.ResponseWriter, r *http.Request)
 	go client.write()
 }
 
-func (h *Hub) handleMessageFromBroker(topic MessageBrokerTopic, msg []byte) error {
+func (h *WsHub) handleMessageFromBroker(topic MessageBrokerTopic, msg []byte) error {
 	switch topic {
 	case MessageCreatedTopic:
 		{

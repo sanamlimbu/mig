@@ -8,15 +8,15 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type APIController struct {
+type HttpApiController struct {
 	auther           Auther
-	hub              *Hub
+	hub              *WsHub
 	chatroomsService *ChatroomsService
 	usersService     *UsersService
 }
 
-func NewAPIController(auther Auther, hub *Hub, chatroomsService *ChatroomsService, usersService *UsersService) *APIController {
-	return &APIController{
+func NewHttpApiController(auther Auther, hub *WsHub, chatroomsService *ChatroomsService, usersService *UsersService) *HttpApiController {
+	return &HttpApiController{
 		auther:           auther,
 		hub:              hub,
 		chatroomsService: chatroomsService,

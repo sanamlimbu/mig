@@ -7,7 +7,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// Nats implement MessageBroker interface
 type Nats struct {
 	conn *nats.Conn
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/cors"
 )
 
-func NewRouter(c *APIController) *chi.Mux {
+func NewHttpRouter(c *HttpApiController) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)

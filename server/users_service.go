@@ -4,6 +4,13 @@ import (
 	"context"
 )
 
+type User struct {
+	ID            int64  `json:"id"`
+	UUID          string `json:"uuid"`
+	Username      string `json:"username"`
+	WorkflowState string `json:"workflow_state"`
+}
+
 type UsersService struct {
 	usersRepo UsersRepository
 }

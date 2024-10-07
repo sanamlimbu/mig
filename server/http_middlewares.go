@@ -82,7 +82,7 @@ func withError(next func(w http.ResponseWriter, r *http.Request) (int, error)) h
 	return fn
 }
 
-func withAuth(c *APIController, next func(u User, w http.ResponseWriter, r *http.Request)) http.HandlerFunc {
+func withAuth(c *HttpApiController, next func(u User, w http.ResponseWriter, r *http.Request)) http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		user := User{
 			ID:       1,

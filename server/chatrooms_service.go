@@ -2,16 +2,6 @@ package mig
 
 import "context"
 
-type ChatroomsService struct {
-	chatroomsRepo ChatroomsRepository
-}
-
-func NewChatroomsService(chatroomsRepo ChatroomsRepository) *ChatroomsService {
-	return &ChatroomsService{
-		chatroomsRepo: chatroomsRepo,
-	}
-}
-
 type Chatroom struct {
 	ID            int64  `json:"id"`
 	Name          string `json:"name"`
@@ -31,6 +21,16 @@ func AllChatroomsWorkflowState() []ChatroomsWorkflowState {
 	return []ChatroomsWorkflowState{
 		ChatroomsWorkflowStateActive,
 		ChatroomsWorkflowStateDeleted,
+	}
+}
+
+type ChatroomsService struct {
+	chatroomsRepo ChatroomsRepository
+}
+
+func NewChatroomsService(chatroomsRepo ChatroomsRepository) *ChatroomsService {
+	return &ChatroomsService{
+		chatroomsRepo: chatroomsRepo,
 	}
 }
 

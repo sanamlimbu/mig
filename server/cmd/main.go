@@ -140,14 +140,14 @@ func serve(c *cli.Context) error {
 	usersRepo := mig.NewUsersRepositoryPostgreSQL(db)
 	usersService := mig.NewUsersService(usersRepo)
 
-	hub := mig.NewHub(nats)
+	hub := mig.NewWsHub(nats)
 	go hub.Run(c.Context)
 
 	nats.Subscribe(mig.MessageCreatedTopic, hub)
 
-	controller := mig.NewAPIController(auther, hub, chatroomsService, usersService)
+	controller := mig.NewHttpApiController(auther, hub, chatroomsService, usersService)
 
-	router := mig.NewRouter(controller)
+	router := mig.NewHttpRouter(controller)
 
 	server := &http.Server{
 		Addr:    addr,
