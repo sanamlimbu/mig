@@ -9,7 +9,7 @@ SELECT c.*,
   u.workflow_state creator_workflow_state
 FROM chatrooms c
 JOIN users u ON u.id = c.created_by 
-WHERE @id = $1 LIMIT 1;
+WHERE c.id = $1 LIMIT 1;
 
 -- name: CreateChatroom :one
 INSERT INTO chatrooms (

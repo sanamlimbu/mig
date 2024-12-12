@@ -174,13 +174,8 @@ SELECT c.id, c.name, c.workflow_state, c.type, c.created_by, c.created_at, c.upd
   u.workflow_state creator_workflow_state
 FROM chatrooms c
 JOIN users u ON u.id = c.created_by 
-WHERE $2 = $1 LIMIT 1
+WHERE c.id = $1 LIMIT 1
 `
-
-type GetChatroomWithCreatorParams struct {
-	Column1 interface{}
-	ID      interface{}
-}
 
 type GetChatroomWithCreatorRow struct {
 	ID                   pgtype.UUID
@@ -196,8 +191,8 @@ type GetChatroomWithCreatorRow struct {
 	CreatorWorkflowState UserWorkflowState
 }
 
-func (q *Queries) GetChatroomWithCreator(ctx context.Context, arg GetChatroomWithCreatorParams) (GetChatroomWithCreatorRow, error) {
-	row := q.db.QueryRow(ctx, getChatroomWithCreator, arg.Column1, arg.ID)
+func (q *Queries) GetChatroomWithCreator(ctx context.Context, id pgtype.UUID) (GetChatroomWithCreatorRow, error) {
+	row := q.db.QueryRow(ctx, getChatroomWithCreator, id)
 	var i GetChatroomWithCreatorRow
 	err := row.Scan(
 		&i.ID,
