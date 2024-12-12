@@ -32,11 +32,11 @@ SELECT u.* FROM chatrooms c
 JOIN users u ON c.created_by = u.id
 WHERE c.id = $1 LIMIT 1;
 
--- name: GetChatrooms :many
+-- name: GetChatroomsByWorkflowStates :many
 SELECT * FROM chatrooms
 WHERE workflow_state = ANY(@workflow_states::chatroom_workflow_state[]);
 
--- name: GetChatroomsBySearchTerm :many
+-- name: GetChatroomsBySearchTermAndWorkflowStates :many
 SELECT * FROM chatrooms
 WHERE name ILIKE @search_term AND
   workflow_state = ANY(@workflow_states::chatroom_workflow_state[]);
