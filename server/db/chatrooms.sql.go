@@ -93,20 +93,50 @@ func (q *Queries) GetChatroomCreator(ctx context.Context, id pgtype.UUID) (User,
 }
 
 const getChatroomMessages = `-- name: GetChatroomMessages :many
-SELECT m.id, m.sender_id, m.recipient_id, m.chatroom_id, m.workflow_state, m.message_type, m.content, m.is_read, m.created_at, m.updated_at, m.deleted_at from messages m
+SELECT m.id, m.sender_id, m.recipient_id, m.chatroom_id, m.workflow_state, m.message_type, m.content, m.is_read, m.created_at, m.updated_at, m.deleted_at,
+  c.name chatroom_name,
+  c.type chatroom_type,
+  c.workflow_state chatroom_workflow_state,
+  c.created_by chatroom_creator_id,
+  u.email sender_email,
+  u.username sender_username,
+  u.workflow_state sender_workflow_state
+FROM messages m
 JOIN chatrooms c ON m.chatroom_id = c.id
+JOIN users u ON u.id = m.sender_id
 WHERE c.id = $1
 `
 
-func (q *Queries) GetChatroomMessages(ctx context.Context, id pgtype.UUID) ([]Message, error) {
+type GetChatroomMessagesRow struct {
+	ID                    pgtype.UUID
+	SenderID              pgtype.UUID
+	RecipientID           pgtype.UUID
+	ChatroomID            pgtype.UUID
+	WorkflowState         MessageWorkflowState
+	MessageType           MessageType
+	Content               string
+	IsRead                pgtype.Bool
+	CreatedAt             pgtype.Timestamptz
+	UpdatedAt             pgtype.Timestamptz
+	DeletedAt             pgtype.Timestamptz
+	ChatroomName          string
+	ChatroomType          ChatroomType
+	ChatroomWorkflowState ChatroomWorkflowState
+	ChatroomCreatorID     pgtype.UUID
+	SenderEmail           string
+	SenderUsername        string
+	SenderWorkflowState   UserWorkflowState
+}
+
+func (q *Queries) GetChatroomMessages(ctx context.Context, id pgtype.UUID) ([]GetChatroomMessagesRow, error) {
 	rows, err := q.db.Query(ctx, getChatroomMessages, id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Message
+	var items []GetChatroomMessagesRow
 	for rows.Next() {
-		var i Message
+		var i GetChatroomMessagesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.SenderID,
@@ -119,6 +149,13 @@ func (q *Queries) GetChatroomMessages(ctx context.Context, id pgtype.UUID) ([]Me
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.ChatroomName,
+			&i.ChatroomType,
+			&i.ChatroomWorkflowState,
+			&i.ChatroomCreatorID,
+			&i.SenderEmail,
+			&i.SenderUsername,
+			&i.SenderWorkflowState,
 		); err != nil {
 			return nil, err
 		}

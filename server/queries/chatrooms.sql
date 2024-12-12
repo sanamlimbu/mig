@@ -52,6 +52,15 @@ LIMIT @page_size
 OFFSET @page; 
 
 -- name: GetChatroomMessages :many
-SELECT m.* from messages m
+SELECT m.*,
+  c.name chatroom_name,
+  c.type chatroom_type,
+  c.workflow_state chatroom_workflow_state,
+  c.created_by chatroom_creator_id,
+  u.email sender_email,
+  u.username sender_username,
+  u.workflow_state sender_workflow_state
+FROM messages m
 JOIN chatrooms c ON m.chatroom_id = c.id
+JOIN users u ON u.id = m.sender_id
 WHERE c.id = $1;
