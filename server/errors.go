@@ -58,3 +58,5 @@ func HttpErrorReply(w http.ResponseWriter, e error) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
+
+const ErrMsgUnableToJsonEnode string = "unable to json encode response"
