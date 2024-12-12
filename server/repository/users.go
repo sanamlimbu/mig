@@ -115,7 +115,7 @@ func (r *UserRepositoryPostgreSQL) GetChatroomsByCreatorID(ctx context.Context, 
 
 	result, err := r.queries.GetChatroomsByCreatorID(ctx, arg)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching chatrooms of created by %s: %w", creatorID, err)
+		return nil, err
 	}
 
 	return getChatroomsFromDBModel(result), nil
@@ -135,7 +135,7 @@ func (r *UserRepositoryPostgreSQL) GetFriends(ctx context.Context, userID string
 
 	result, err := r.queries.GetFriends(ctx, arg)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching friends of user %s: %w", userID, err)
+		return nil, err
 	}
 
 	return getUsersFromDBModel(result), nil
@@ -159,7 +159,7 @@ func (r *UserRepositoryPostgreSQL) GetFriend(ctx context.Context, userID, friend
 
 	result, err := r.queries.GetFriend(ctx, arg)
 	if err != nil {
-		return mig.User{}, fmt.Errorf("error fetching friend %s of user %s: %w", friendID, userID, err)
+		return mig.User{}, err
 	}
 
 	return getUserFromDBModel(result), nil
@@ -173,7 +173,7 @@ func (r *UserRepositoryPostgreSQL) GetUser(ctx context.Context, userID string) (
 
 	result, err := r.queries.GetUser(ctx, userUUID)
 	if err != nil {
-		return mig.User{}, fmt.Errorf("error fetching user %s: %w", userID, err)
+		return mig.User{}, err
 	}
 
 	return getUserFromDBModel(result), nil
@@ -182,7 +182,7 @@ func (r *UserRepositoryPostgreSQL) GetUser(ctx context.Context, userID string) (
 func (r *UserRepositoryPostgreSQL) GetUserByEmail(ctx context.Context, email string) (mig.User, error) {
 	result, err := r.queries.GetUserByEmail(ctx, email)
 	if err != nil {
-		return mig.User{}, fmt.Errorf("error fetching user with email %s: %w", email, err)
+		return mig.User{}, err
 	}
 
 	return getUserFromDBModel(result), nil
@@ -191,7 +191,7 @@ func (r *UserRepositoryPostgreSQL) GetUserByEmail(ctx context.Context, email str
 func (r *UserRepositoryPostgreSQL) GetUserByUsername(ctx context.Context, username string) (mig.User, error) {
 	result, err := r.queries.GetUserByUsername(ctx, username)
 	if err != nil {
-		return mig.User{}, fmt.Errorf("error fetching user with username %s: %w", username, err)
+		return mig.User{}, err
 	}
 
 	return getUserFromDBModel(result), nil
@@ -243,7 +243,7 @@ func (r *UserRepositoryPostgreSQL) GetPrivateConversation(ctx context.Context, f
 
 	result, err := r.queries.GetPrivateConversation(ctx, arg)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching private conversation between %s and %s: %w", firstUserID, secondUserID, err)
+		return nil, err
 	}
 
 	return getPrivateMessagesFromDBModel(result), nil

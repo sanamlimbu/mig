@@ -119,7 +119,7 @@ func (r *ChatroomRepositoryPostgreSQL) GetChatroomsBySearchTermAndWorkflowStates
 
 	result, err := r.queries.GetChatroomsBySearchTermAndWorkflowStates(ctx, arg)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching chatroom with search term %s: %w", searchTerm, err)
+		return nil, err
 	}
 
 	return getChatroomsFromDBModel(result), nil
@@ -133,7 +133,7 @@ func (r *ChatroomRepositoryPostgreSQL) GetMessages(ctx context.Context, chatroom
 
 	result, err := r.queries.GetChatroomMessages(ctx, chatroomUUID)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching messages of chatroom %s: %w", chatroomID, err)
+		return nil, err
 	}
 
 	return getChatroomMessagesFromDBModel(result), nil
@@ -147,7 +147,7 @@ func (r *ChatroomRepositoryPostgreSQL) GetChatroom(ctx context.Context, chatroom
 
 	result, err := r.queries.GetChatroom(ctx, chatroomUUID)
 	if err != nil {
-		return mig.Chatroom{}, fmt.Errorf("error fetching chatroom %s: %w", chatroomID, err)
+		return mig.Chatroom{}, err
 	}
 
 	return getChatroomFromDBModel(result), nil
@@ -161,7 +161,7 @@ func (r *ChatroomRepositoryPostgreSQL) GetChatroomWithCreator(ctx context.Contex
 
 	result, err := r.queries.GetChatroomWithCreator(ctx, chatroomUUID)
 	if err != nil {
-		return mig.ChatroomWithCreator{}, fmt.Errorf("error fetching chatroom %s: %w", chatroomID, err)
+		return mig.ChatroomWithCreator{}, err
 	}
 
 	return getChatroomWithCreatorFromDBModel(result), nil
