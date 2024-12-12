@@ -130,6 +130,54 @@ func (q *Queries) GetChatroomMessages(ctx context.Context, id pgtype.UUID) ([]Me
 	return items, nil
 }
 
+const getChatroomWithCreator = `-- name: GetChatroomWithCreator :one
+SELECT c.id, c.name, c.workflow_state, c.type, c.created_by, c.created_at, c.updated_at, c.deleted_at,
+  u.username creator_username,
+  u.email creator_email,
+  u.workflow_state creator_workflow_state
+FROM chatrooms c
+JOIN users u ON u.id = c.created_by 
+WHERE $2 = $1 LIMIT 1
+`
+
+type GetChatroomWithCreatorParams struct {
+	Column1 interface{}
+	ID      interface{}
+}
+
+type GetChatroomWithCreatorRow struct {
+	ID                   pgtype.UUID
+	Name                 string
+	WorkflowState        ChatroomWorkflowState
+	Type                 ChatroomType
+	CreatedBy            pgtype.UUID
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
+	DeletedAt            pgtype.Timestamptz
+	CreatorUsername      string
+	CreatorEmail         string
+	CreatorWorkflowState UserWorkflowState
+}
+
+func (q *Queries) GetChatroomWithCreator(ctx context.Context, arg GetChatroomWithCreatorParams) (GetChatroomWithCreatorRow, error) {
+	row := q.db.QueryRow(ctx, getChatroomWithCreator, arg.Column1, arg.ID)
+	var i GetChatroomWithCreatorRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.WorkflowState,
+		&i.Type,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.CreatorUsername,
+		&i.CreatorEmail,
+		&i.CreatorWorkflowState,
+	)
+	return i, err
+}
+
 const getChatrooms = `-- name: GetChatrooms :many
 SELECT id, name, workflow_state, type, created_by, created_at, updated_at, deleted_at FROM chatrooms
 WHERE workflow_state = ANY($1::chatroom_workflow_state[])

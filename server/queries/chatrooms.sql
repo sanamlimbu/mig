@@ -2,6 +2,15 @@
 SELECT * FROM chatrooms
 WHERE id = $1 LIMIT 1;
 
+-- name: GetChatroomWithCreator :one
+SELECT c.*,
+  u.username creator_username,
+  u.email creator_email,
+  u.workflow_state creator_workflow_state
+FROM chatrooms c
+JOIN users u ON u.id = c.created_by 
+WHERE @id = $1 LIMIT 1;
+
 -- name: CreateChatroom :one
 INSERT INTO chatrooms (
   name, workflow_state, type, created_by
