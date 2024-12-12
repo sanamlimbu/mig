@@ -2,8 +2,6 @@ package repository
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"mig"
 	"mig/db"
@@ -121,7 +119,7 @@ func (r *ChatroomRepositoryPostgreSQL) GetChatroomsBySearchTermAndWorkflowStates
 
 	result, err := r.queries.GetChatroomsBySearchTermAndWorkflowStates(ctx, arg)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching chatroom with search term %s", searchTerm)
+		return nil, fmt.Errorf("error fetching chatroom with search term %s: %w", searchTerm, err)
 	}
 
 	return getChatroomsFromDBModel(result), nil
@@ -148,12 +146,8 @@ func (r *ChatroomRepositoryPostgreSQL) GetChatroom(ctx context.Context, chatroom
 	}
 
 	result, err := r.queries.GetChatroom(ctx, chatroomUUID)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return mig.Chatroom{}, fmt.Errorf("not found chatroom %s", chatroomID)
-	}
-
 	if err != nil {
-		return mig.Chatroom{}, fmt.Errorf("error fetching chatroom %s", chatroomID)
+		return mig.Chatroom{}, fmt.Errorf("error fetching chatroom %s: %w", chatroomID, err)
 	}
 
 	return getChatroomFromDBModel(result), nil
@@ -166,12 +160,8 @@ func (r *ChatroomRepositoryPostgreSQL) GetChatroomWithCreator(ctx context.Contex
 	}
 
 	result, err := r.queries.GetChatroomWithCreator(ctx, chatroomUUID)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return mig.ChatroomWithCreator{}, fmt.Errorf("not found chatroom %s", chatroomID)
-	}
-
 	if err != nil {
-		return mig.ChatroomWithCreator{}, fmt.Errorf("error fetching chatroom %s", chatroomID)
+		return mig.ChatroomWithCreator{}, fmt.Errorf("error fetching chatroom %s: %w", chatroomID, err)
 	}
 
 	return getChatroomWithCreatorFromDBModel(result), nil

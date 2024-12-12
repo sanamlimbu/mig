@@ -2,9 +2,7 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"mig"
 	"mig/db"
@@ -117,7 +115,7 @@ func (r *UserRepositoryPostgreSQL) GetChatroomsByCreatorID(ctx context.Context, 
 
 	result, err := r.queries.GetChatroomsByCreatorID(ctx, arg)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching chatrooms of creator %s: %w", creatorID, err)
+		return nil, fmt.Errorf("error fetching chatrooms of created by %s: %w", creatorID, err)
 	}
 
 	return getChatroomsFromDBModel(result), nil
@@ -160,12 +158,8 @@ func (r *UserRepositoryPostgreSQL) GetFriend(ctx context.Context, userID, friend
 	}
 
 	result, err := r.queries.GetFriend(ctx, arg)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return mig.User{}, fmt.Errorf("friendship between %s and %s", userID, friendID)
-	}
-
 	if err != nil {
-		return mig.User{}, fmt.Errorf("error fetching friend %s of user %s: %w", userID, friendID, err)
+		return mig.User{}, fmt.Errorf("error fetching friend %s of user %s: %w", friendID, userID, err)
 	}
 
 	return getUserFromDBModel(result), nil
@@ -178,12 +172,8 @@ func (r *UserRepositoryPostgreSQL) GetUser(ctx context.Context, userID string) (
 	}
 
 	result, err := r.queries.GetUser(ctx, userUUID)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return mig.User{}, fmt.Errorf("user %s not found", userID)
-	}
-
 	if err != nil {
-		return mig.User{}, fmt.Errorf("error fetching user %s", userID)
+		return mig.User{}, fmt.Errorf("error fetching user %s: %w", userID, err)
 	}
 
 	return getUserFromDBModel(result), nil
@@ -191,12 +181,8 @@ func (r *UserRepositoryPostgreSQL) GetUser(ctx context.Context, userID string) (
 
 func (r *UserRepositoryPostgreSQL) GetUserByEmail(ctx context.Context, email string) (mig.User, error) {
 	result, err := r.queries.GetUserByEmail(ctx, email)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return mig.User{}, fmt.Errorf("user with email %s not found", email)
-	}
-
 	if err != nil {
-		return mig.User{}, fmt.Errorf("error fetching user with email %s", email)
+		return mig.User{}, fmt.Errorf("error fetching user with email %s: %w", email, err)
 	}
 
 	return getUserFromDBModel(result), nil
@@ -204,12 +190,8 @@ func (r *UserRepositoryPostgreSQL) GetUserByEmail(ctx context.Context, email str
 
 func (r *UserRepositoryPostgreSQL) GetUserByUsername(ctx context.Context, username string) (mig.User, error) {
 	result, err := r.queries.GetUserByUsername(ctx, username)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return mig.User{}, fmt.Errorf("user with username %s not found", username)
-	}
-
 	if err != nil {
-		return mig.User{}, fmt.Errorf("error fetching user with username %s", username)
+		return mig.User{}, fmt.Errorf("error fetching user with username %s: %w", username, err)
 	}
 
 	return getUserFromDBModel(result), nil
