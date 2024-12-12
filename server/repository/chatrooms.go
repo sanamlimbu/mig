@@ -19,7 +19,7 @@ type ChatroomRepository interface {
 	GetChatroom(ctx context.Context, chatroomID string) (mig.Chatroom, error)
 
 	// GetChatroomWithCreator returns chatroom with given chatroom ID including creator information.
-	GetChatroomWithCreator(ctx context.Context, chatroomID string) (mig.Chatroom, error)
+	GetChatroomWithCreator(ctx context.Context, chatroomID string) (mig.ChatroomWithCreator, error)
 }
 
 type ChatroomRepositoryPostgreSQL struct {
