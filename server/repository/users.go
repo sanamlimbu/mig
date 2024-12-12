@@ -15,9 +15,10 @@ type UserRepository interface {
 	// Returned chatrooms are filtered based on given chatroom workflow states and paginated.
 	GetChatroomsByCreatorID(ctx context.Context, creatorID string, chatroomWorkflowStates []string, pagination mig.Pagination) ([]mig.Chatroom, error)
 
-	// GetFriends returns active friends of specified user.
+	// GetFriendsByFriendshipWorkflowStates returns active friends of specified user.
+	// Result is filtered based on provided friendship workflow states.
 	// Returned result is paginated.
-	GetFriends(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.User, error)
+	GetFriendsByFriendshipWorkflowStates(ctx context.Context, userID string, friendshipWorkflowStates []string, pagination mig.Pagination) ([]mig.User, error)
 
 	// GetFriend returns a friend for specified user, identified by their userID and friendID.
 	GetFriend(ctx context.Context, userID, friendID string) (mig.User, error)
@@ -121,19 +122,30 @@ func (r *UserRepositoryPostgreSQL) GetChatroomsByCreatorID(ctx context.Context, 
 	return getChatroomsFromDBModel(result), nil
 }
 
-func (r *UserRepositoryPostgreSQL) GetFriends(ctx context.Context, userID string, friendshipWorkflowStates []string, pagination mig.Pagination) ([]mig.User, error) {
+func getDbModelFriendshipsWorkflowStates(input []string) []db.FriendshipWorkflowState {
+	result := make([]db.FriendshipWorkflowState, len(input))
+
+	for i, str := range input {
+		result[i] = db.FriendshipWorkflowState(str)
+	}
+
+	return result
+}
+
+func (r *UserRepositoryPostgreSQL) GetFriendsByFriendshipWorkflowStates(ctx context.Context, userID string, friendshipWorkflowStates []string, pagination mig.Pagination) ([]mig.User, error) {
 	userUUID, err := stringToUUID(userID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid uuid %s", userID)
 	}
 
-	arg := db.GetFriendsParams{
-		ID:       userUUID,
-		Page:     int32(pagination.Page),
-		PageSize: int32(pagination.PageSize),
+	arg := db.GetFriendsByFriendshipWorkflowStatesParams{
+		ID:                       userUUID,
+		FriendshipWorkflowStates: getDbModelFriendshipsWorkflowStates(friendshipWorkflowStates),
+		Page:                     int32(pagination.Page),
+		PageSize:                 int32(pagination.PageSize),
 	}
 
-	result, err := r.queries.GetFriends(ctx, arg)
+	result, err := r.queries.GetFriendsByFriendshipWorkflowStates(ctx, arg)
 	if err != nil {
 		return nil, err
 	}

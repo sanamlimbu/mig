@@ -46,9 +46,9 @@ func (s *Service) GetChatroomsByCreatorID(ctx context.Context, creatorID string,
 	return result, nil
 }
 
-// GetFriends returns active friends of given user.
+// GetFriendsByFriendshipWorkflowStates returns active friends of given user based on given friendship workflow states.
 // Result is paginated.
-func (s *Service) GetFriends(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.User, error) {
+func (s *Service) GetFriendsByFriendshipWorkflowStates(ctx context.Context, userID string, friendshipWorkflowStates []string, pagination mig.Pagination) ([]mig.User, error) {
 	_, err := s.userRepo.GetUser(ctx, userID)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return nil, mig.NewError(fmt.Sprintf("not found user of id %s", userID), err, mig.NotFoundError)
@@ -58,7 +58,7 @@ func (s *Service) GetFriends(ctx context.Context, userID string, pagination mig.
 		return nil, mig.NewError(fmt.Sprintf("unable to fetch user of id %s", userID), err, mig.InternalServerError)
 	}
 
-	result, err := s.userRepo.GetFriends(ctx, userID, pagination)
+	result, err := s.userRepo.GetFriendsByFriendshipWorkflowStates(ctx, userID, friendshipWorkflowStates, pagination)
 	if err != nil {
 		return nil, mig.NewError(fmt.Sprintf("unable to fetch friends of user of id %s", userID), err, mig.InternalServerError)
 	}

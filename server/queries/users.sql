@@ -48,7 +48,7 @@ FROM (
 JOIN users u ON u.id = friends.id
 LIMIT 1;
 
--- name: GetFriends :many
+-- name: GetFriendsByFriendshipWorkflowStates :many
 SELECT u.*
 FROM (
   SELECT 
@@ -57,7 +57,7 @@ FROM (
       WHEN f.requester_id = @id THEN f.user_id
     END AS id
   FROM friendships f
-  WHERE f.workflow_state = 'active' AND 
+  WHERE f.workflow_state = ANY(@friendship_workflow_states::friendship_workflow_state[]) AND
         (f.requester_id = @id OR f.user_id = @id)
 ) AS friends
 JOIN users u ON u.id = friends.id

@@ -118,7 +118,7 @@ func (q *Queries) GetFriend(ctx context.Context, arg GetFriendParams) (User, err
 	return i, err
 }
 
-const getFriends = `-- name: GetFriends :many
+const getFriendsByFriendshipWorkflowStates = `-- name: GetFriendsByFriendshipWorkflowStates :many
 SELECT u.id, u.email, u.username, u.password, u.workflow_state, u.reset_password_url, u.created_at, u.updated_at, u.deleted_at
 FROM (
   SELECT 
@@ -127,22 +127,28 @@ FROM (
       WHEN f.requester_id = $1 THEN f.user_id
     END AS id
   FROM friendships f
-  WHERE f.workflow_state = 'active' AND 
+  WHERE f.workflow_state = ANY($2::friendship_workflow_state[]) AND
         (f.requester_id = $1 OR f.user_id = $1)
 ) AS friends
 JOIN users u ON u.id = friends.id
-LIMIT $3
-OFFSET $2
+LIMIT $4
+OFFSET $3
 `
 
-type GetFriendsParams struct {
-	ID       pgtype.UUID
-	Page     int32
-	PageSize int32
+type GetFriendsByFriendshipWorkflowStatesParams struct {
+	ID                       pgtype.UUID
+	FriendshipWorkflowStates []FriendshipWorkflowState
+	Page                     int32
+	PageSize                 int32
 }
 
-func (q *Queries) GetFriends(ctx context.Context, arg GetFriendsParams) ([]User, error) {
-	rows, err := q.db.Query(ctx, getFriends, arg.ID, arg.Page, arg.PageSize)
+func (q *Queries) GetFriendsByFriendshipWorkflowStates(ctx context.Context, arg GetFriendsByFriendshipWorkflowStatesParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, getFriendsByFriendshipWorkflowStates,
+		arg.ID,
+		arg.FriendshipWorkflowStates,
+		arg.Page,
+		arg.PageSize,
+	)
 	if err != nil {
 		return nil, err
 	}
