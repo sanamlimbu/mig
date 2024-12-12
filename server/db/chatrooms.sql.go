@@ -224,15 +224,24 @@ const getChatroomsBySearchTermAndWorkflowStates = `-- name: GetChatroomsBySearch
 SELECT id, name, workflow_state, type, created_by, created_at, updated_at, deleted_at FROM chatrooms
 WHERE name ILIKE $1 AND
   workflow_state = ANY($2::chatroom_workflow_state[])
+LIMIT $4
+OFFSET $3
 `
 
 type GetChatroomsBySearchTermAndWorkflowStatesParams struct {
 	SearchTerm     string
 	WorkflowStates []ChatroomWorkflowState
+	Page           int32
+	PageSize       int32
 }
 
 func (q *Queries) GetChatroomsBySearchTermAndWorkflowStates(ctx context.Context, arg GetChatroomsBySearchTermAndWorkflowStatesParams) ([]Chatroom, error) {
-	rows, err := q.db.Query(ctx, getChatroomsBySearchTermAndWorkflowStates, arg.SearchTerm, arg.WorkflowStates)
+	rows, err := q.db.Query(ctx, getChatroomsBySearchTermAndWorkflowStates,
+		arg.SearchTerm,
+		arg.WorkflowStates,
+		arg.Page,
+		arg.PageSize,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -263,10 +272,18 @@ func (q *Queries) GetChatroomsBySearchTermAndWorkflowStates(ctx context.Context,
 const getChatroomsByWorkflowStates = `-- name: GetChatroomsByWorkflowStates :many
 SELECT id, name, workflow_state, type, created_by, created_at, updated_at, deleted_at FROM chatrooms
 WHERE workflow_state = ANY($1::chatroom_workflow_state[])
+LIMIT $3
+OFFSET $2
 `
 
-func (q *Queries) GetChatroomsByWorkflowStates(ctx context.Context, workflowStates []ChatroomWorkflowState) ([]Chatroom, error) {
-	rows, err := q.db.Query(ctx, getChatroomsByWorkflowStates, workflowStates)
+type GetChatroomsByWorkflowStatesParams struct {
+	WorkflowStates []ChatroomWorkflowState
+	Page           int32
+	PageSize       int32
+}
+
+func (q *Queries) GetChatroomsByWorkflowStates(ctx context.Context, arg GetChatroomsByWorkflowStatesParams) ([]Chatroom, error) {
+	rows, err := q.db.Query(ctx, getChatroomsByWorkflowStates, arg.WorkflowStates, arg.Page, arg.PageSize)
 	if err != nil {
 		return nil, err
 	}

@@ -34,12 +34,16 @@ WHERE c.id = $1 LIMIT 1;
 
 -- name: GetChatroomsByWorkflowStates :many
 SELECT * FROM chatrooms
-WHERE workflow_state = ANY(@workflow_states::chatroom_workflow_state[]);
+WHERE workflow_state = ANY(@workflow_states::chatroom_workflow_state[])
+LIMIT @page_size
+OFFSET @page;
 
 -- name: GetChatroomsBySearchTermAndWorkflowStates :many
 SELECT * FROM chatrooms
 WHERE name ILIKE @search_term AND
-  workflow_state = ANY(@workflow_states::chatroom_workflow_state[]);
+  workflow_state = ANY(@workflow_states::chatroom_workflow_state[])
+LIMIT @page_size
+OFFSET @page; 
 
 -- name: GetChatroomsByCreatorID :many
 SELECT * FROM chatrooms
