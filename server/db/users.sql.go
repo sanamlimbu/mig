@@ -172,37 +172,64 @@ func (q *Queries) GetFriends(ctx context.Context, arg GetFriendsParams) ([]User,
 }
 
 const getPrivateConversation = `-- name: GetPrivateConversation :many
-SELECT id, sender_id, recipient_id, chatroom_id, workflow_state, message_type, content, is_read, created_at, updated_at, deleted_at FROM messages m1
-WHERE m1.sender_id = $3 AND m1.recipient_id = $4 
-UNION
-SELECT id, sender_id, recipient_id, chatroom_id, workflow_state, message_type, content, is_read, created_at, updated_at, deleted_at FROM messages m2
-WHERE m2.sender_id = $4 AND m2.recipient_id = $3
-ORDER BY created_at DESC
-LIMIT $2
-OFFSET $1
+SELECT m.id, m.sender_id, m.recipient_id, m.chatroom_id, m.workflow_state, m.message_type, m.content, m.is_read, m.created_at, m.updated_at, m.deleted_at,
+  s.username sender_username,
+  s.email sender_email,
+  s.workflow_state sender_workflow_state,
+  r.username recipient_username,
+  r.email recipient_email,
+  r.workflow_state recipient_workflow_state
+FROM messages m
+JOIN users s ON s.id = m.sender_id
+JOIN users r ON r.id = m.recipient_id
+WHERE (m.sender_id = $1 AND m.recipient_id = $2)
+  OR (m.sender_id = $2 AND m.recipient_id = $1)
+ORDER BY m.created_at DESC
+LIMIT $4
+OFFSET $3
 `
 
 type GetPrivateConversationParams struct {
-	Page         int32
-	PageSize     int32
 	FirstUserID  pgtype.UUID
 	SecondUserID pgtype.UUID
+	Page         int32
+	PageSize     int32
 }
 
-func (q *Queries) GetPrivateConversation(ctx context.Context, arg GetPrivateConversationParams) ([]Message, error) {
+type GetPrivateConversationRow struct {
+	ID                     pgtype.UUID
+	SenderID               pgtype.UUID
+	RecipientID            pgtype.UUID
+	ChatroomID             pgtype.UUID
+	WorkflowState          MessageWorkflowState
+	MessageType            MessageType
+	Content                string
+	IsRead                 pgtype.Bool
+	CreatedAt              pgtype.Timestamptz
+	UpdatedAt              pgtype.Timestamptz
+	DeletedAt              pgtype.Timestamptz
+	SenderUsername         string
+	SenderEmail            string
+	SenderWorkflowState    UserWorkflowState
+	RecipientUsername      string
+	RecipientEmail         string
+	RecipientWorkflowState UserWorkflowState
+}
+
+func (q *Queries) GetPrivateConversation(ctx context.Context, arg GetPrivateConversationParams) ([]GetPrivateConversationRow, error) {
 	rows, err := q.db.Query(ctx, getPrivateConversation,
-		arg.Page,
-		arg.PageSize,
 		arg.FirstUserID,
 		arg.SecondUserID,
+		arg.Page,
+		arg.PageSize,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Message
+	var items []GetPrivateConversationRow
 	for rows.Next() {
-		var i Message
+		var i GetPrivateConversationRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.SenderID,
@@ -215,6 +242,12 @@ func (q *Queries) GetPrivateConversation(ctx context.Context, arg GetPrivateConv
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.SenderUsername,
+			&i.SenderEmail,
+			&i.SenderWorkflowState,
+			&i.RecipientUsername,
+			&i.RecipientEmail,
+			&i.RecipientWorkflowState,
 		); err != nil {
 			return nil, err
 		}

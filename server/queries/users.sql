@@ -15,12 +15,19 @@ SELECT password FROM users
 WHERE id = $1 LIMIT 1;
 
 -- name: GetPrivateConversation :many
-SELECT * FROM messages m1
-WHERE m1.sender_id = @first_user_id AND m1.recipient_id = @second_user_id 
-UNION
-SELECT * FROM messages m2
-WHERE m2.sender_id = @second_user_id AND m2.recipient_id = @first_user_id
-ORDER BY created_at DESC
+SELECT m.*,
+  s.username sender_username,
+  s.email sender_email,
+  s.workflow_state sender_workflow_state,
+  r.username recipient_username,
+  r.email recipient_email,
+  r.workflow_state recipient_workflow_state
+FROM messages m
+JOIN users s ON s.id = m.sender_id
+JOIN users r ON r.id = m.recipient_id
+WHERE (m.sender_id = @first_user_id AND m.recipient_id = @second_user_id)
+  OR (m.sender_id = @second_user_id AND m.recipient_id = @first_user_id)
+ORDER BY m.created_at DESC
 LIMIT @page_size
 OFFSET @page;
 
