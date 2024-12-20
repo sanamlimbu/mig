@@ -79,3 +79,19 @@ INSERT INTO refresh_tokens (
   $1, $2, $3
 )
 RETURNING *;
+
+-- name: UpsertFriendship :one
+INSERT INTO friendships (
+  requester_id, user_id, workflow_state, workflow_completed_by
+) VALUES (
+  $1, $2, $3, $4
+)
+RETURNING *;
+
+-- name: CreatePrivateMessage :one
+INSERT INTO messages (
+  sender_id, recipient_id, content, workflow_state, message_type
+) VALUES (
+  $1, $2, $3, $4, 'private'
+)
+RETURNING *;

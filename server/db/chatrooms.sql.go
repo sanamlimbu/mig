@@ -48,6 +48,46 @@ func (q *Queries) CreateChatroom(ctx context.Context, arg CreateChatroomParams) 
 	return i, err
 }
 
+const createChatroomMessage = `-- name: CreateChatroomMessage :one
+INSERT INTO messages (
+  sender_id, chatroom_id, content, workflow_state, message_type
+) VALUES (
+  $1, $2, $3, $4, 'chatroom'
+)
+RETURNING id, sender_id, recipient_id, chatroom_id, workflow_state, message_type, content, is_read, created_at, updated_at, deleted_at
+`
+
+type CreateChatroomMessageParams struct {
+	SenderID      pgtype.UUID
+	ChatroomID    pgtype.UUID
+	Content       string
+	WorkflowState MessageWorkflowState
+}
+
+func (q *Queries) CreateChatroomMessage(ctx context.Context, arg CreateChatroomMessageParams) (Message, error) {
+	row := q.db.QueryRow(ctx, createChatroomMessage,
+		arg.SenderID,
+		arg.ChatroomID,
+		arg.Content,
+		arg.WorkflowState,
+	)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.SenderID,
+		&i.RecipientID,
+		&i.ChatroomID,
+		&i.WorkflowState,
+		&i.MessageType,
+		&i.Content,
+		&i.IsRead,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const getChatroom = `-- name: GetChatroom :one
 SELECT id, name, workflow_state, type, created_by, created_at, updated_at, deleted_at FROM chatrooms
 WHERE id = $1 LIMIT 1
@@ -55,6 +95,27 @@ WHERE id = $1 LIMIT 1
 
 func (q *Queries) GetChatroom(ctx context.Context, id pgtype.UUID) (Chatroom, error) {
 	row := q.db.QueryRow(ctx, getChatroom, id)
+	var i Chatroom
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.WorkflowState,
+		&i.Type,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getChatroomByName = `-- name: GetChatroomByName :one
+SELECT id, name, workflow_state, type, created_by, created_at, updated_at, deleted_at FROM chatrooms
+WHERE name = $1 LIMIT 1
+`
+
+func (q *Queries) GetChatroomByName(ctx context.Context, name string) (Chatroom, error) {
+	row := q.db.QueryRow(ctx, getChatroomByName, name)
 	var i Chatroom
 	err := row.Scan(
 		&i.ID,

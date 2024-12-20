@@ -2,6 +2,10 @@
 SELECT * FROM chatrooms
 WHERE id = $1 LIMIT 1;
 
+-- name: GetChatroomByName :one
+SELECT * FROM chatrooms
+WHERE name = $1 LIMIT 1;
+
 -- name: GetChatroomWithCreator :one
 SELECT c.*,
   u.username creator_username,
@@ -64,3 +68,11 @@ FROM messages m
 JOIN chatrooms c ON m.chatroom_id = c.id
 JOIN users u ON u.id = m.sender_id
 WHERE c.id = $1;
+
+-- name: CreateChatroomMessage :one
+INSERT INTO messages (
+  sender_id, chatroom_id, content, workflow_state, message_type
+) VALUES (
+  $1, $2, $3, $4, 'chatroom'
+)
+RETURNING *;

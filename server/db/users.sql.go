@@ -11,6 +11,46 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createPrivateMessage = `-- name: CreatePrivateMessage :one
+INSERT INTO messages (
+  sender_id, recipient_id, content, workflow_state, message_type
+) VALUES (
+  $1, $2, $3, $4, 'private'
+)
+RETURNING id, sender_id, recipient_id, chatroom_id, workflow_state, message_type, content, is_read, created_at, updated_at, deleted_at
+`
+
+type CreatePrivateMessageParams struct {
+	SenderID      pgtype.UUID
+	RecipientID   pgtype.UUID
+	Content       string
+	WorkflowState MessageWorkflowState
+}
+
+func (q *Queries) CreatePrivateMessage(ctx context.Context, arg CreatePrivateMessageParams) (Message, error) {
+	row := q.db.QueryRow(ctx, createPrivateMessage,
+		arg.SenderID,
+		arg.RecipientID,
+		arg.Content,
+		arg.WorkflowState,
+	)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.SenderID,
+		&i.RecipientID,
+		&i.ChatroomID,
+		&i.WorkflowState,
+		&i.MessageType,
+		&i.Content,
+		&i.IsRead,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const createRefreshToken = `-- name: CreateRefreshToken :one
 INSERT INTO refresh_tokens (
   user_id, token, expires_at
@@ -341,4 +381,41 @@ func (q *Queries) GetUserPassword(ctx context.Context, id pgtype.UUID) (string, 
 	var password string
 	err := row.Scan(&password)
 	return password, err
+}
+
+const upsertFriendship = `-- name: UpsertFriendship :one
+INSERT INTO friendships (
+  requester_id, user_id, workflow_state, workflow_completed_by
+) VALUES (
+  $1, $2, $3, $4
+)
+RETURNING id, requester_id, user_id, workflow_state, workflow_completed_by, created_at, updated_at, deleted_at
+`
+
+type UpsertFriendshipParams struct {
+	RequesterID         pgtype.UUID
+	UserID              pgtype.UUID
+	WorkflowState       FriendshipWorkflowState
+	WorkflowCompletedBy pgtype.UUID
+}
+
+func (q *Queries) UpsertFriendship(ctx context.Context, arg UpsertFriendshipParams) (Friendship, error) {
+	row := q.db.QueryRow(ctx, upsertFriendship,
+		arg.RequesterID,
+		arg.UserID,
+		arg.WorkflowState,
+		arg.WorkflowCompletedBy,
+	)
+	var i Friendship
+	err := row.Scan(
+		&i.ID,
+		&i.RequesterID,
+		&i.UserID,
+		&i.WorkflowState,
+		&i.WorkflowCompletedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
