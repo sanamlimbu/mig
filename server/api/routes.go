@@ -33,12 +33,12 @@ func NewHttpRouter(c *HttpApiController) (*chi.Mux, error) {
 	}))
 
 	r.Route("/api", func(r chi.Router) {
-		r.With(paginate).Get("/users/{user_id}/friends", c.userHandler.GetFriends)
-		r.With(paginate).Get("/users/{user_id}/private-messages/{recipient_id}", c.userHandler.GetPrivateMessages)
+		r.With(paginate).Get("/users/{user_id}/friends", c.GetFriends)
+		r.With(paginate).Get("/users/{user_id}/private-messages/{recipient_id}", c.GetPrivateMessages)
 
-		r.With(paginate).Get("/chatrooms", c.chatroomHandler.GetChatrooms)
-		r.Get("/chatrooms/{chatroom_id}", c.chatroomHandler.GetChatroom)
-		r.With(paginate).Get("/chatrooms/{chatroom_id}/messages", c.chatroomHandler.GetChatroomMessages)
+		r.With(paginate).Get("/chatrooms", c.GetChatrooms)
+		r.Get("/chatrooms/{chatroom_id}", c.GetChatroom)
+		r.With(paginate).Get("/chatrooms/{chatroom_id}/messages", c.GetChatroomMessages)
 	})
 
 	return r, nil

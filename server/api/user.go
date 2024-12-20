@@ -1,30 +1,13 @@
-package user
+package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"mig"
 	"net/http"
 	"slices"
 
 	"github.com/go-chi/chi/v5"
 )
-
-type Handler struct {
-	userService *Service
-}
-
-func NewHandler(userService *Service) (*Handler, error) {
-	if userService == nil {
-		return nil, fmt.Errorf("missing user service")
-	}
-
-	handler := &Handler{
-		userService: userService,
-	}
-
-	return handler, nil
-}
 
 // GetValidUserWorkflowStates returns strings slice of valid user workflow states.
 func GetValidUserWorkflowStates(input []string) []string {
@@ -60,7 +43,7 @@ func GetValidFriendshipWorkflowStates(input []string) []string {
 // If no valid states are provided, default state "active" is used.
 // Result is paginated based on provided `pagination` query parameters.
 // Pagination is optional: if not provided, default pagination settings will be used.
-func (h *Handler) GetFriends(w http.ResponseWriter, r *http.Request) {
+func (c *HttpApiController) GetFriends(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "user_id")
 
 	friendshipWorkflowStates := GetValidFriendshipWorkflowStates(r.URL.Query()["state[]"])
@@ -71,7 +54,7 @@ func (h *Handler) GetFriends(w http.ResponseWriter, r *http.Request) {
 
 	pagination := mig.NewPagination(r)
 
-	result, err := h.userService.GetFriendsByFriendshipWorkflowStates(r.Context(), userID, friendshipWorkflowStates, pagination)
+	result, err := c.userService.GetFriendsByFriendshipWorkflowStates(r.Context(), userID, friendshipWorkflowStates, pagination)
 	if err != nil {
 		mig.HttpErrorReply(w, err)
 		return
@@ -86,14 +69,14 @@ func (h *Handler) GetFriends(w http.ResponseWriter, r *http.Request) {
 // It expects user ID and recipient ID to be passed as URL parameters.
 // Result is paginated based on the provided `pagination` query parameters.
 // Pagination is optional: if not provided, default pagination settings will be used.
-func (h *Handler) GetPrivateMessages(w http.ResponseWriter, r *http.Request) {
+func (c *HttpApiController) GetPrivateMessages(w http.ResponseWriter, r *http.Request) {
 	firstUserID := chi.URLParam(r, "user_id")
 
 	secondUserID := chi.URLParam(r, "recipient_id")
 
 	pagination := mig.NewPagination(r)
 
-	result, err := h.userService.userRepo.GetPrivateConversation(r.Context(), firstUserID, secondUserID, pagination)
+	result, err := c.userService.GetPrivateMessages(r.Context(), firstUserID, secondUserID, pagination)
 	if err != nil {
 		mig.HttpErrorReply(w, err)
 		return

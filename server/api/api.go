@@ -7,22 +7,22 @@ import (
 )
 
 type HttpApiController struct {
-	userHandler     *user.Handler
-	chatroomHandler *chatroom.Handler
+	userService     *user.Service
+	chatroomService *chatroom.Service
 }
 
-func NewHttpApiController(userHandler *user.Handler, chatroomHandler *chatroom.Handler) (*HttpApiController, error) {
-	if userHandler == nil {
-		return nil, fmt.Errorf("missing user handler")
+func NewHttpApiController(userService *user.Service, chatroomService *chatroom.Service) (*HttpApiController, error) {
+	if userService == nil {
+		return nil, fmt.Errorf("missing user service")
 	}
 
-	if chatroomHandler == nil {
-		return nil, fmt.Errorf("missing chatroom handler")
+	if chatroomService == nil {
+		return nil, fmt.Errorf("missing chatroom service")
 	}
 
 	controller := &HttpApiController{
-		userHandler:     userHandler,
-		chatroomHandler: chatroomHandler,
+		userService:     userService,
+		chatroomService: chatroomService,
 	}
 
 	return controller, nil

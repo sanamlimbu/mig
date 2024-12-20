@@ -1,4 +1,4 @@
-package chatroom
+package api
 
 import (
 	"encoding/json"
@@ -9,22 +9,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 )
-
-type Handler struct {
-	chatroomService *Service
-}
-
-func NewHandler(chatroomService *Service) (*Handler, error) {
-	if chatroomService == nil {
-		return nil, fmt.Errorf("missing chatroom service")
-	}
-
-	handler := &Handler{
-		chatroomService: chatroomService,
-	}
-
-	return handler, nil
-}
 
 // GetValidChatroomWorkflowStates returns strings slice of valid chatroom workflow states.
 func GetValidChatroomWorkflowStates(input []string) []string {
@@ -47,7 +31,7 @@ func GetValidChatroomWorkflowStates(input []string) []string {
 // If `search_term` is missing no filtering is applied.
 // Result is paginated based on provided `pagination` query parameters.
 // Pagination is optional: if not provided, default pagination settings will be used.
-func (h *Handler) GetChatrooms(w http.ResponseWriter, r *http.Request) {
+func (c *HttpApiController) GetChatrooms(w http.ResponseWriter, r *http.Request) {
 	searchTerm := r.URL.Query().Get("search_term")
 
 	chatroomWorkflowStates := GetValidChatroomWorkflowStates(r.URL.Query()["state[]"])
@@ -60,7 +44,7 @@ func (h *Handler) GetChatrooms(w http.ResponseWriter, r *http.Request) {
 
 	wildCardSearchTerm := fmt.Sprintf("%%%s%%", searchTerm)
 
-	result, err := h.chatroomService.GetChatroomsBySearchTermAndWorkflowStates(r.Context(), wildCardSearchTerm, chatroomWorkflowStates, pagination)
+	result, err := c.chatroomService.GetChatroomsBySearchTermAndWorkflowStates(r.Context(), wildCardSearchTerm, chatroomWorkflowStates, pagination)
 	if err != nil {
 		mig.HttpErrorReply(w, err)
 		return
@@ -72,10 +56,10 @@ func (h *Handler) GetChatrooms(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetChatroom returns chatroom for given chatroom ID.
-func (h *Handler) GetChatroom(w http.ResponseWriter, r *http.Request) {
+func (c *HttpApiController) GetChatroom(w http.ResponseWriter, r *http.Request) {
 	chatroomID := chi.URLParam(r, "chatroom_id")
 
-	result, err := h.chatroomService.GetChatroomWithCreator(r.Context(), chatroomID)
+	result, err := c.chatroomService.GetChatroomWithCreator(r.Context(), chatroomID)
 	if err != nil {
 		mig.HttpErrorReply(w, err)
 		return
@@ -88,12 +72,12 @@ func (h *Handler) GetChatroom(w http.ResponseWriter, r *http.Request) {
 
 // GetChatroomMessages returns messages sent in given chatroom.
 // Returned result is paginated.
-func (h *Handler) GetChatroomMessages(w http.ResponseWriter, r *http.Request) {
+func (c *HttpApiController) GetChatroomMessages(w http.ResponseWriter, r *http.Request) {
 	chatroomID := chi.URLParam(r, "chatroom_id")
 
 	pagination := mig.NewPagination(r)
 
-	result, err := h.chatroomService.GetMessages(r.Context(), chatroomID, pagination)
+	result, err := c.chatroomService.GetMessages(r.Context(), chatroomID, pagination)
 	if err != nil {
 		mig.HttpErrorReply(w, err)
 		return
