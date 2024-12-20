@@ -53,7 +53,7 @@ func NewUserRepositoryPostgreSQL(queries *db.Queries) (*UserRepositoryPostgreSQL
 	return repo, nil
 }
 
-func uuidToString(uuid pgtype.UUID) string {
+func UUIDToString(uuid pgtype.UUID) string {
 	if !uuid.Valid {
 		return ""
 	}
@@ -61,7 +61,7 @@ func uuidToString(uuid pgtype.UUID) string {
 	return encodeUUID(uuid.Bytes)
 }
 
-func stringToUUID(str string) (pgtype.UUID, error) {
+func StringToUUID(str string) (pgtype.UUID, error) {
 	var uuid pgtype.UUID
 	err := uuid.Scan(str)
 	return uuid, err
@@ -85,7 +85,7 @@ func encodeUUID(src [16]byte) string {
 
 func getUserFromDBModel(user db.User) mig.User {
 	return mig.User{
-		ID:            uuidToString(user.ID),
+		ID:            UUIDToString(user.ID),
 		Email:         user.Email,
 		Username:      user.Username,
 		WorkflowState: mig.UserWorkflowState(user.WorkflowState),
@@ -103,7 +103,7 @@ func getUsersFromDBModel(users []db.User) []mig.User {
 }
 
 func (r *UserRepositoryPostgreSQL) GetChatroomsByCreatorID(ctx context.Context, creatorID string, chatroomWorkflowStates []string, pagination mig.Pagination) ([]mig.Chatroom, error) {
-	creatorUUID, err := stringToUUID(creatorID)
+	creatorUUID, err := StringToUUID(creatorID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid uuid %s", creatorID)
 	}
@@ -133,7 +133,7 @@ func getDbModelFriendshipsWorkflowStates(input []string) []db.FriendshipWorkflow
 }
 
 func (r *UserRepositoryPostgreSQL) GetFriendsByFriendshipWorkflowStates(ctx context.Context, userID string, friendshipWorkflowStates []string, pagination mig.Pagination) ([]mig.User, error) {
-	userUUID, err := stringToUUID(userID)
+	userUUID, err := StringToUUID(userID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid uuid %s", userID)
 	}
@@ -154,12 +154,12 @@ func (r *UserRepositoryPostgreSQL) GetFriendsByFriendshipWorkflowStates(ctx cont
 }
 
 func (r *UserRepositoryPostgreSQL) GetFriend(ctx context.Context, userID, friendID string) (mig.User, error) {
-	userUUID, err := stringToUUID(userID)
+	userUUID, err := StringToUUID(userID)
 	if err != nil {
 		return mig.User{}, fmt.Errorf("invalid uuid %s", userID)
 	}
 
-	friendUUID, err := stringToUUID(friendID)
+	friendUUID, err := StringToUUID(friendID)
 	if err != nil {
 		return mig.User{}, fmt.Errorf("invalid uuid %s", friendID)
 	}
@@ -178,7 +178,7 @@ func (r *UserRepositoryPostgreSQL) GetFriend(ctx context.Context, userID, friend
 }
 
 func (r *UserRepositoryPostgreSQL) GetUser(ctx context.Context, userID string) (mig.User, error) {
-	userUUID, err := stringToUUID(userID)
+	userUUID, err := StringToUUID(userID)
 	if err != nil {
 		return mig.User{}, fmt.Errorf("invalid uuid %s", userID)
 	}
@@ -211,13 +211,13 @@ func (r *UserRepositoryPostgreSQL) GetUserByUsername(ctx context.Context, userna
 
 func getPrivateMessageFromDBModel(msg db.GetPrivateConversationRow) mig.PrivateMessage {
 	return mig.PrivateMessage{
-		ID:                     uuidToString(msg.ID),
+		ID:                     UUIDToString(msg.ID),
 		Content:                msg.Content,
 		WorkflowState:          mig.MessageWorkflowState(msg.WorkflowState),
 		Type:                   mig.MessageType(msg.MessageType),
 		CreatedAt:              msg.CreatedAt.Time,
-		SenderID:               uuidToString(msg.SenderID),
-		RecipientID:            uuidToString(msg.RecipientID),
+		SenderID:               UUIDToString(msg.SenderID),
+		RecipientID:            UUIDToString(msg.RecipientID),
 		SenderUsername:         msg.SenderUsername,
 		SenderEmail:            msg.SenderEmail,
 		SenderWorkflowState:    mig.UserWorkflowState(msg.SenderWorkflowState),
@@ -238,12 +238,12 @@ func getPrivateMessagesFromDBModel(msgs []db.GetPrivateConversationRow) []mig.Pr
 }
 
 func (r *UserRepositoryPostgreSQL) GetPrivateConversation(ctx context.Context, firstUserID, secondUserID string, pagination mig.Pagination) ([]mig.PrivateMessage, error) {
-	firstUserUUID, err := stringToUUID(firstUserID)
+	firstUserUUID, err := StringToUUID(firstUserID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid uuid %s", firstUserID)
 	}
 
-	secondUserUUID, err := stringToUUID(secondUserID)
+	secondUserUUID, err := StringToUUID(secondUserID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid uuid %s", secondUserID)
 	}

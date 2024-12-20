@@ -40,21 +40,21 @@ func NewChatroomRepositoryPostgreSQL(queries *db.Queries) (*ChatroomRepositoryPo
 
 func getChatroomFromDBModel(chatroom db.Chatroom) mig.Chatroom {
 	return mig.Chatroom{
-		ID:            uuidToString(chatroom.ID),
+		ID:            UUIDToString(chatroom.ID),
 		Name:          chatroom.Name,
 		WorkflowState: mig.ChatroomWorkflowState(chatroom.WorkflowState),
 		Type:          mig.ChatroomType(chatroom.Type),
-		CreatedBy:     uuidToString(chatroom.CreatedBy),
+		CreatedBy:     UUIDToString(chatroom.CreatedBy),
 	}
 }
 
 func getChatroomWithCreatorFromDBModel(chatroom db.GetChatroomWithCreatorRow) mig.ChatroomWithCreator {
 	return mig.ChatroomWithCreator{
-		ID:                   uuidToString(chatroom.ID),
+		ID:                   UUIDToString(chatroom.ID),
 		Name:                 chatroom.Name,
 		WorkflowState:        mig.ChatroomWorkflowState(chatroom.WorkflowState),
 		Type:                 mig.ChatroomType(chatroom.Type),
-		CreatedBy:            uuidToString(chatroom.CreatedBy),
+		CreatedBy:            UUIDToString(chatroom.CreatedBy),
 		CreatorUsername:      chatroom.CreatorUsername,
 		CreatorEmail:         chatroom.CreatorEmail,
 		CreatorWorkflowState: mig.UserWorkflowState(chatroom.CreatorWorkflowState),
@@ -83,14 +83,14 @@ func getChatroomsFromDBModel(chatrooms []db.Chatroom) []mig.Chatroom {
 
 func getChatroomMessageFromDBModel(msg db.GetChatroomMessagesRow) mig.ChatroomMessage {
 	return mig.ChatroomMessage{
-		ID:                    uuidToString(msg.ID),
+		ID:                    UUIDToString(msg.ID),
 		Content:               msg.Content,
 		WorkflowState:         mig.MessageWorkflowState(msg.WorkflowState),
 		Type:                  mig.MessageTypeChatroom,
 		CreatedAt:             msg.CreatedAt.Time,
-		SenderID:              uuidToString(msg.SenderID),
-		ChatroomID:            uuidToString(msg.ChatroomID),
-		ChatroomCreatorID:     uuidToString(msg.ChatroomCreatorID),
+		SenderID:              UUIDToString(msg.SenderID),
+		ChatroomID:            UUIDToString(msg.ChatroomID),
+		ChatroomCreatorID:     UUIDToString(msg.ChatroomCreatorID),
 		SenderEmail:           msg.SenderEmail,
 		SenderUsername:        msg.SenderUsername,
 		SenderWorkflowState:   mig.UserWorkflowState(msg.SenderWorkflowState),
@@ -126,7 +126,7 @@ func (r *ChatroomRepositoryPostgreSQL) GetChatroomsBySearchTermAndWorkflowStates
 }
 
 func (r *ChatroomRepositoryPostgreSQL) GetMessages(ctx context.Context, chatroomID string, pagination mig.Pagination) ([]mig.ChatroomMessage, error) {
-	chatroomUUID, err := stringToUUID(chatroomID)
+	chatroomUUID, err := StringToUUID(chatroomID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid uuid %s", chatroomID)
 	}
@@ -140,7 +140,7 @@ func (r *ChatroomRepositoryPostgreSQL) GetMessages(ctx context.Context, chatroom
 }
 
 func (r *ChatroomRepositoryPostgreSQL) GetChatroom(ctx context.Context, chatroomID string) (mig.Chatroom, error) {
-	chatroomUUID, err := stringToUUID(chatroomID)
+	chatroomUUID, err := StringToUUID(chatroomID)
 	if err != nil {
 		return mig.Chatroom{}, fmt.Errorf("invalid uuid %s", chatroomID)
 	}
@@ -154,7 +154,7 @@ func (r *ChatroomRepositoryPostgreSQL) GetChatroom(ctx context.Context, chatroom
 }
 
 func (r *ChatroomRepositoryPostgreSQL) GetChatroomWithCreator(ctx context.Context, chatroomID string) (mig.ChatroomWithCreator, error) {
-	chatroomUUID, err := stringToUUID(chatroomID)
+	chatroomUUID, err := StringToUUID(chatroomID)
 	if err != nil {
 		return mig.ChatroomWithCreator{}, fmt.Errorf("invalid uuid %s", chatroomID)
 	}
