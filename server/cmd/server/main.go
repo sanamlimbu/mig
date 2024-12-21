@@ -77,11 +77,11 @@ func main() {
 					&cli.StringFlag{Name: "jwt_secret", Value: "devdev", EnvVars: []string{"MIG_JWT_SECRET"}, Usage: "secret to sign jwt"},
 					&cli.StringFlag{Name: "app_name", Value: "mig-api-server", EnvVars: []string{"MIG_APP_NAME"}, Usage: "application name"},
 
-					&cli.StringFlag{Name: "database_user", Value: "postgres", EnvVars: []string{"MIG_DATABASE_USER"}, Usage: "database user"},
+					&cli.StringFlag{Name: "database_user", Value: "mig", EnvVars: []string{"MIG_DATABASE_USER"}, Usage: "database user"},
 					&cli.StringFlag{Name: "database_pass", Value: "devdev", EnvVars: []string{"MIG_DATABASE_PASS"}, Usage: "database pass"},
 					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{"MIG_DATABASE_HOST"}, Usage: "database host"},
 					&cli.StringFlag{Name: "database_port", Value: "5435", EnvVars: []string{"MIG_DATABASE_PORT"}, Usage: "database port"},
-					&cli.StringFlag{Name: "database_name", Value: "postgres", EnvVars: []string{"MIG_DATABASE_NAME"}, Usage: "database name"},
+					&cli.StringFlag{Name: "database_name", Value: "mig", EnvVars: []string{"MIG_DATABASE_NAME"}, Usage: "database name"},
 				},
 				Action: func(c *cli.Context) error {
 					err := seedDb(c)
