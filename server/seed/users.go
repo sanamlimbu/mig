@@ -6,6 +6,7 @@ import (
 	"mig/db"
 	"mig/repository"
 
+	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -18,7 +19,11 @@ func (s *SeederPostgreSQL) Users(ctx context.Context, count int) ([]mig.User, er
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			log.Error().Msg(err.Error())
+		}
+	}()
 
 	qtx := s.queries.WithTx(tx)
 

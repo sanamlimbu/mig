@@ -5,6 +5,8 @@ import (
 	"mig"
 	"mig/db"
 	"mig/repository"
+
+	"github.com/rs/zerolog/log"
 )
 
 // Messages creates two messages for each user in each chatroom and also creates messages
@@ -14,7 +16,11 @@ func (s *SeederPostgreSQL) Messages(ctx context.Context, users []mig.User, chatr
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			log.Error().Msg(err.Error())
+		}
+	}()
 
 	qtx := s.queries.WithTx(tx)
 

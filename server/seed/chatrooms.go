@@ -8,6 +8,8 @@ import (
 	"mig/db"
 	"mig/repository"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 // Chatrooms will create one public chatroom per user as creator.
@@ -16,7 +18,11 @@ func (s *SeederPostgreSQL) Chatrooms(ctx context.Context, users []mig.User) ([]m
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			log.Error().Msg(err.Error())
+		}
+	}()
 
 	qtx := s.queries.WithTx(tx)
 	chatrooms := make([]mig.Chatroom, len(users))

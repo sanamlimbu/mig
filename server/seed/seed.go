@@ -24,6 +24,7 @@ func NewSeederPostgreSQL(conn *pgx.Conn, queries *db.Queries) (*SeederPostgreSQL
 	}
 
 	seeder := &SeederPostgreSQL{
+		conn:    conn,
 		queries: queries,
 		faker:   gofakeit.New(0),
 	}

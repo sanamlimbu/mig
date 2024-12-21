@@ -5,6 +5,8 @@ import (
 	"mig"
 	"mig/db"
 	"mig/repository"
+
+	"github.com/rs/zerolog/log"
 )
 
 // Friendships will create friendships between each users.
@@ -13,7 +15,11 @@ func (s *SeederPostgreSQL) Friendships(ctx context.Context, users []mig.User) er
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			log.Error().Msg(err.Error())
+		}
+	}()
 
 	qtx := s.queries.WithTx(tx)
 

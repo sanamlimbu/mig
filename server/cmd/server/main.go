@@ -94,7 +94,10 @@ func main() {
 		},
 	}
 
-	app.Run(os.Args)
+	err := app.Run(os.Args)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func serve(c *cli.Context) error {
@@ -122,7 +125,11 @@ func serve(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close(c.Context)
+	defer func() {
+		if err := conn.Close(c.Context); err != nil {
+			log.Error().Msg(err.Error())
+		}
+	}()
 
 	queries := db.New(conn)
 
@@ -237,11 +244,18 @@ func connectPostgreSQL(c *cli.Context) (*pgx.Conn, error) {
 }
 
 func seedDb(c *cli.Context) error {
+	ctx := c.Context
+
 	conn, err := connectPostgreSQL(c)
 	if err != nil {
 		return err
 	}
-	defer conn.Close(c.Context)
+
+	defer func() {
+		if err := conn.Close(ctx); err != nil {
+			log.Error().Msg(err.Error())
+		}
+	}()
 
 	queries := db.New(conn)
 
@@ -249,8 +263,6 @@ func seedDb(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
-	ctx := c.Context
 
 	users, err := seeder.Users(ctx, 20)
 	if err != nil {

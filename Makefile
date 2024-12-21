@@ -62,6 +62,10 @@ db-reset:
 go-mod-tidy:
 	cd $(SERVER) && go mod tidy
 
+.PHONY: go-errcheck
+go-errcheck:
+	cd $(SERVER) && errcheck ./...
+
 .PHONY: go-mod-download
 go-mod-download:
 	cd $(SERVER) && go mod download
