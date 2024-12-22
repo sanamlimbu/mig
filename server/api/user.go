@@ -37,6 +37,21 @@ func GetValidFriendshipWorkflowStates(input []string) []string {
 	return result
 }
 
+// GetUser returns user of given id.
+func (c *HttpApiController) GetUser(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "user_id")
+
+	result, err := c.userService.GetUser(r.Context(), userID)
+	if err != nil {
+		mig.HttpErrorReply(w, err)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		mig.HttpErrorReply(w, mig.NewError(mig.ErrMsgUnableToJsonEnode, err, mig.InternalServerError))
+	}
+}
+
 // GetFriends handler returns friends for specified user, with optional filtering by friendship workflow states.
 // It accepts an optional query parameter `state[]`, which allows filtering by following friendship
 // workflow states: 'pending', 'active', 'rejected', 'cancelled', and 'deleted'.
