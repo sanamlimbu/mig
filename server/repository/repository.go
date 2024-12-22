@@ -42,3 +42,30 @@ func NewPostgreSQLConnection(ctx context.Context, config PostgreSQLConnectionCon
 
 	return conn, err
 }
+
+func RegisterDataTypes(ctx context.Context, conn *pgx.Conn) error {
+	dataTypeNames := []string{
+		"chatroom_workflow_state",
+		"_chatroom_workflow_state",
+		"chatroom_type",
+		"_chatroom_type",
+		"friendship_workflow_state",
+		"_friendship_workflow_state",
+		"message_workflow_state",
+		"_message_workflow_state",
+		"message_type",
+		"_message_type",
+		"user_workflow_state",
+		"_user_workflow_state",
+	}
+
+	for _, typeName := range dataTypeNames {
+		dataType, err := conn.LoadType(ctx, typeName)
+		if err != nil {
+			return err
+		}
+		conn.TypeMap().RegisterType(dataType)
+	}
+
+	return nil
+}

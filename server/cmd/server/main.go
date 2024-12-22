@@ -131,6 +131,11 @@ func serve(c *cli.Context) error {
 		}
 	}()
 
+	err = repository.RegisterDataTypes(c.Context, conn)
+	if err != nil {
+		return err
+	}
+
 	queries := db.New(conn)
 
 	userRepo, err := repository.NewUserRepositoryPostgreSQL(queries)
