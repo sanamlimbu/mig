@@ -251,6 +251,8 @@ func (r *UserRepositoryPostgreSQL) GetPrivateConversation(ctx context.Context, f
 	arg := db.GetPrivateConversationParams{
 		FirstUserID:  firstUserUUID,
 		SecondUserID: secondUserUUID,
+		Page:         int32(pagination.Page),
+		PageSize:     int32(pagination.PageSize),
 	}
 
 	result, err := r.queries.GetPrivateConversation(ctx, arg)
