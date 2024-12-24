@@ -14,7 +14,7 @@ import (
 )
 
 // Chatrooms will create one public chatroom per user as creator.
-func (s *SeederPostgreSQL) Chatrooms(ctx context.Context, usersUUIDs, chatroomUUIDs []string) ([]mig.Chatroom, error) {
+func (s *SeederPostgreSQL) Chatrooms(ctx context.Context, userUUIDs, chatroomUUIDs []string) ([]mig.Chatroom, error) {
 	tx, err := s.conn.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -27,9 +27,9 @@ func (s *SeederPostgreSQL) Chatrooms(ctx context.Context, usersUUIDs, chatroomUU
 
 	qtx := s.queries.WithTx(tx)
 
-	chatrooms := make([]mig.Chatroom, len(usersUUIDs))
+	chatrooms := make([]mig.Chatroom, len(userUUIDs))
 
-	for i, userUUID := range usersUUIDs {
+	for i, userUUID := range userUUIDs {
 		name := ""
 		for {
 			name = strings.ToLower(s.faker.Animal())

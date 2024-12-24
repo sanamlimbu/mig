@@ -3,7 +3,6 @@ package seed
 import (
 	"context"
 	"errors"
-	"mig"
 	"mig/db"
 	"mig/repository"
 
@@ -12,7 +11,7 @@ import (
 )
 
 // Friendships will create friendships between each users.
-func (s *SeederPostgreSQL) Friendships(ctx context.Context, users []mig.User) error {
+func (s *SeederPostgreSQL) Friendships(ctx context.Context, userUUIDs []string) error {
 	tx, err := s.conn.Begin(ctx)
 	if err != nil {
 		return err
@@ -25,15 +24,15 @@ func (s *SeederPostgreSQL) Friendships(ctx context.Context, users []mig.User) er
 
 	qtx := s.queries.WithTx(tx)
 
-	for i := 0; i < len(users)-1; i++ {
-		for j := i + 1; j < len(users); j++ {
+	for i := 0; i < len(userUUIDs)-1; i++ {
+		for j := i + 1; j < len(userUUIDs); j++ {
 
-			requestorID, err := repository.StringToUUID(users[i].ID)
+			requestorID, err := repository.StringToUUID(userUUIDs[i])
 			if err != nil {
 				return err
 			}
 
-			userID, err := repository.StringToUUID(users[j].ID)
+			userID, err := repository.StringToUUID(userUUIDs[j])
 			if err != nil {
 				return err
 			}

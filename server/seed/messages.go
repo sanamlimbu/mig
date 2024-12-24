@@ -3,7 +3,6 @@ package seed
 import (
 	"context"
 	"errors"
-	"mig"
 	"mig/db"
 	"mig/repository"
 
@@ -13,7 +12,7 @@ import (
 
 // Messages creates two messages for each user in each chatroom and also creates messages
 // between all unique pairs of users.
-func (s *SeederPostgreSQL) Messages(ctx context.Context, users []mig.User, chatrooms []mig.Chatroom) error {
+func (s *SeederPostgreSQL) Messages(ctx context.Context, userUUIDs, chatroomUUIDs []string) error {
 	tx, err := s.conn.Begin(ctx)
 	if err != nil {
 		return err
@@ -26,14 +25,14 @@ func (s *SeederPostgreSQL) Messages(ctx context.Context, users []mig.User, chatr
 
 	qtx := s.queries.WithTx(tx)
 
-	for _, user := range users {
-		for _, chatroom := range chatrooms {
-			senderID, err := repository.StringToUUID(user.ID)
+	for _, userUUID := range userUUIDs {
+		for _, chatroomUUID := range chatroomUUIDs {
+			senderID, err := repository.StringToUUID(userUUID)
 			if err != nil {
 				return err
 			}
 
-			chatroomID, err := repository.StringToUUID(chatroom.ID)
+			chatroomID, err := repository.StringToUUID(chatroomUUID)
 			if err != nil {
 				return err
 			}
@@ -62,14 +61,14 @@ func (s *SeederPostgreSQL) Messages(ctx context.Context, users []mig.User, chatr
 		}
 	}
 
-	for i := 0; i < len(users)-1; i++ {
-		for j := i + 1; j < len(users); j++ {
-			senderID, err := repository.StringToUUID(users[i].ID)
+	for i := 0; i < len(userUUIDs)-1; i++ {
+		for j := i + 1; j < len(userUUIDs); j++ {
+			senderID, err := repository.StringToUUID(UsersUUIDs[i])
 			if err != nil {
 				return err
 			}
 
-			recipientID, err := repository.StringToUUID(users[j].ID)
+			recipientID, err := repository.StringToUUID(userUUIDs[j])
 			if err != nil {
 				return err
 			}
@@ -88,14 +87,14 @@ func (s *SeederPostgreSQL) Messages(ctx context.Context, users []mig.User, chatr
 		}
 	}
 
-	for i := len(users) - 1; i >= 1; i-- {
+	for i := len(userUUIDs) - 1; i >= 1; i-- {
 		for j := i - 1; j >= 0; j-- {
-			senderID, err := repository.StringToUUID(users[i].ID)
+			senderID, err := repository.StringToUUID(userUUIDs[i])
 			if err != nil {
 				return err
 			}
 
-			recipientID, err := repository.StringToUUID(users[j].ID)
+			recipientID, err := repository.StringToUUID(userUUIDs[j])
 			if err != nil {
 				return err
 			}
