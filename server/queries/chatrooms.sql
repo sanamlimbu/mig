@@ -39,9 +39,10 @@ LIMIT @page_size
 OFFSET @page; 
 
 
--- name: GetChatroomsByCreatorID :many
+-- name: GetChatroomsByCreatorIDAndWorkflowStates :many
 SELECT * FROM chatrooms
-WHERE created_by = @id
+WHERE created_by = @id AND
+  workflow_state = ANY(@workflow_states::chatroom_workflow_state[])
 LIMIT @page_size
 OFFSET @page; 
 

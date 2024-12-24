@@ -273,21 +273,28 @@ func (q *Queries) GetChatroomWithCreator(ctx context.Context, id pgtype.UUID) (G
 	return i, err
 }
 
-const getChatroomsByCreatorID = `-- name: GetChatroomsByCreatorID :many
+const getChatroomsByCreatorIDAndWorkflowStates = `-- name: GetChatroomsByCreatorIDAndWorkflowStates :many
 SELECT id, name, workflow_state, type, created_by, created_at, updated_at, deleted_at FROM chatrooms
-WHERE created_by = $1
-LIMIT $3
-OFFSET $2
+WHERE created_by = $1 AND
+  workflow_state = ANY($2::chatroom_workflow_state[])
+LIMIT $4
+OFFSET $3
 `
 
-type GetChatroomsByCreatorIDParams struct {
-	ID       pgtype.UUID
-	Page     int32
-	PageSize int32
+type GetChatroomsByCreatorIDAndWorkflowStatesParams struct {
+	ID             pgtype.UUID
+	WorkflowStates []ChatroomWorkflowState
+	Page           int32
+	PageSize       int32
 }
 
-func (q *Queries) GetChatroomsByCreatorID(ctx context.Context, arg GetChatroomsByCreatorIDParams) ([]Chatroom, error) {
-	rows, err := q.db.Query(ctx, getChatroomsByCreatorID, arg.ID, arg.Page, arg.PageSize)
+func (q *Queries) GetChatroomsByCreatorIDAndWorkflowStates(ctx context.Context, arg GetChatroomsByCreatorIDAndWorkflowStatesParams) ([]Chatroom, error) {
+	rows, err := q.db.Query(ctx, getChatroomsByCreatorIDAndWorkflowStates,
+		arg.ID,
+		arg.WorkflowStates,
+		arg.Page,
+		arg.PageSize,
+	)
 	if err != nil {
 		return nil, err
 	}

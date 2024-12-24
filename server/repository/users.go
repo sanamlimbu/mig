@@ -75,13 +75,14 @@ func (r *UserRepositoryPostgreSQL) GetChatroomsByCreatorID(ctx context.Context, 
 		return nil, fmt.Errorf("invalid uuid %s", creatorID)
 	}
 
-	arg := db.GetChatroomsByCreatorIDParams{
-		ID:       creatorUUID,
-		Page:     int32(pagination.Page),
-		PageSize: int32(pagination.PageSize),
+	arg := db.GetChatroomsByCreatorIDAndWorkflowStatesParams{
+		ID:             creatorUUID,
+		WorkflowStates: getDbModelChatroomWorkflowStates(chatroomWorkflowStates),
+		Page:           int32(pagination.Page),
+		PageSize:       int32(pagination.PageSize),
 	}
 
-	result, err := r.queries.GetChatroomsByCreatorID(ctx, arg)
+	result, err := r.queries.GetChatroomsByCreatorIDAndWorkflowStates(ctx, arg)
 	if err != nil {
 		return nil, err
 	}
