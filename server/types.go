@@ -18,7 +18,7 @@ type Pagination struct {
 
 func NewPagination(r *http.Request) Pagination {
 	return Pagination{
-		Page:     r.Context().Value(PagePaginationCtxValue).(int),
+		Page:     r.Context().Value(PagePaginationCtxValue).(int) - 1,
 		PageSize: r.Context().Value(PageSizePaginationCtxValue).(int),
 	}
 }

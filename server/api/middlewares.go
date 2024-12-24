@@ -16,7 +16,7 @@ func paginate(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		page, err := strconv.Atoi(r.URL.Query().Get("page"))
 		if err != nil || page <= 0 {
-			page = 0
+			page = 1
 		}
 
 		size, err := strconv.Atoi(r.URL.Query().Get("page_size"))
