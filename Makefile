@@ -66,6 +66,10 @@ go-mod-tidy:
 go-errcheck:
 	cd $(SERVER) && errcheck ./...
 
+.PHONY: go-test
+go-test:
+	cd $(SERVER) && go test ./testings/... -v
+
 .PHONY: go-mod-download
 go-mod-download:
 	cd $(SERVER) && go mod download
