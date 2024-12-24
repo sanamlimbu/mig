@@ -269,13 +269,13 @@ func seedDb(c *cli.Context) error {
 		return err
 	}
 
-	users, err := seeder.Users(ctx, 20)
+	users, err := seeder.Users(ctx, seed.UsersUUIDs[:])
 	if err != nil {
 		return err
 	}
 	fmt.Println("seeded users...")
 
-	chatrooms, err := seeder.Chatrooms(ctx, users)
+	chatrooms, err := seeder.Chatrooms(ctx, seed.UsersUUIDs[:], seed.ChatroomUUIDs[:])
 	if err != nil {
 		return err
 	}

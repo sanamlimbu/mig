@@ -3,6 +3,7 @@ package seed
 import (
 	"context"
 	"errors"
+	"fmt"
 	"mig"
 	"mig/db"
 	"mig/repository"
@@ -16,7 +17,7 @@ import (
 // `count` number of user are random users.
 // Two users Jack(username: jack, email: jack@example.com, password: jack123) and
 // Rose(username: rose, email:rose@example.com, password: rose123) are also created.
-func (s *SeederPostgreSQL) Users(ctx context.Context, count int) ([]mig.User, error) {
+func (s *SeederPostgreSQL) Users(ctx context.Context, uuids []string) ([]mig.User, error) {
 	tx, err := s.conn.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -29,9 +30,15 @@ func (s *SeederPostgreSQL) Users(ctx context.Context, count int) ([]mig.User, er
 
 	qtx := s.queries.WithTx(tx)
 
-	users := make([]mig.User, count+2)
+	length := len(uuids)
 
-	for i := 0; i < count; i++ {
+	if length <= 2 {
+		return nil, fmt.Errorf("uuids slice length is small")
+	}
+
+	users := make([]mig.User, length)
+
+	for i := 0; i < len(uuids)-2; i++ {
 		username := s.faker.Username()
 
 		passwordHash, err := bcrypt.GenerateFromPassword([]byte(username), 8)
@@ -39,7 +46,13 @@ func (s *SeederPostgreSQL) Users(ctx context.Context, count int) ([]mig.User, er
 			return nil, err
 		}
 
+		uuid, err := repository.StringToUUID(uuids[i])
+		if err != nil {
+			return nil, err
+		}
+
 		args := db.CreateUserParams{
+			ID:            uuid,
 			Username:      username,
 			Email:         s.faker.Email(),
 			Password:      string(passwordHash),
@@ -64,7 +77,13 @@ func (s *SeederPostgreSQL) Users(ctx context.Context, count int) ([]mig.User, er
 		return nil, err
 	}
 
+	jackUUID, err := repository.NewPgTypeUUID()
+	if err != nil {
+		return nil, err
+	}
+
 	jackArgs := db.CreateUserParams{
+		ID:            jackUUID,
 		Username:      "jack",
 		Email:         "jack@example.com",
 		Password:      string(jackPasswordHash),
@@ -81,7 +100,12 @@ func (s *SeederPostgreSQL) Users(ctx context.Context, count int) ([]mig.User, er
 		return nil, err
 	}
 
+	roseUUID, err := repository.NewPgTypeUUID()
+	if err != nil {
+		return nil, err
+	}
 	roseArgs := db.CreateUserParams{
+		ID:            roseUUID,
 		Username:      "rose",
 		Email:         "rose@example.com",
 		Password:      string(rosePasswordHash),
@@ -93,14 +117,14 @@ func (s *SeederPostgreSQL) Users(ctx context.Context, count int) ([]mig.User, er
 		return nil, err
 	}
 
-	users[count] = mig.User{
+	users[length-2] = mig.User{
 		ID:            repository.UUIDToString(jack.ID),
 		Email:         jack.Email,
 		Username:      jack.Username,
 		WorkflowState: mig.UserWorkflowState(jack.WorkflowState),
 	}
 
-	users[count+1] = mig.User{
+	users[length-1] = mig.User{
 		ID:            repository.UUIDToString(rose.ID),
 		Email:         rose.Email,
 		Username:      rose.Username,

@@ -82,14 +82,15 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
-  email, username, password, workflow_state
+  id, email, username, password, workflow_state
 ) VALUES (
-  $1, $2, $3, $4
+  $1, $2, $3, $4, $5
 )
 RETURNING id, email, username, password, workflow_state, reset_password_url, created_at, updated_at, deleted_at
 `
 
 type CreateUserParams struct {
+	ID            pgtype.UUID
 	Email         string
 	Username      string
 	Password      string
@@ -98,6 +99,7 @@ type CreateUserParams struct {
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRow(ctx, createUser,
+		arg.ID,
 		arg.Email,
 		arg.Username,
 		arg.Password,

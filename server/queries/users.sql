@@ -2,17 +2,21 @@
 SELECT * FROM users
 WHERE id = $1 LIMIT 1;
 
+
 -- name: GetUserByEmail :one
 SELECT * FROM users
 WHERE email = $1 LIMIT 1;
+
 
 -- name: GetUserByUsername :one
 SELECT * FROM users
 WHERE username = $1 LIMIT 1;
 
+
 -- name: GetUserPassword :one
 SELECT password FROM users
 WHERE id = $1 LIMIT 1;
+
 
 -- name: GetPrivateConversation :many
 SELECT m.*,
@@ -31,6 +35,7 @@ ORDER BY m.created_at DESC
 LIMIT @page_size
 OFFSET @page;
 
+
 -- name: GetFriend :one
 SELECT u.*
 FROM (
@@ -48,6 +53,7 @@ FROM (
 JOIN users u ON u.id = friends.id
 LIMIT 1;
 
+
 -- name: GetFriendsByFriendshipWorkflowStates :many
 SELECT u.*
 FROM (
@@ -64,13 +70,18 @@ JOIN users u ON u.id = friends.id
 LIMIT @page_size
 OFFSET @page;
 
+
+
+
+
 -- name: CreateUser :one
 INSERT INTO users (
-  email, username, password, workflow_state
+  id, email, username, password, workflow_state
 ) VALUES (
-  $1, $2, $3, $4
+  $1, $2, $3, $4, $5
 )
 RETURNING *;
+
 
 -- name: CreateRefreshToken :one
 INSERT INTO refresh_tokens (
@@ -80,6 +91,7 @@ INSERT INTO refresh_tokens (
 )
 RETURNING *;
 
+
 -- name: UpsertFriendship :one
 INSERT INTO friendships (
   requester_id, user_id, workflow_state, workflow_completed_by
@@ -87,6 +99,7 @@ INSERT INTO friendships (
   $1, $2, $3, $4
 )
 RETURNING *;
+
 
 -- name: CreatePrivateMessage :one
 INSERT INTO messages (

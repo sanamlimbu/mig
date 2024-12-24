@@ -13,14 +13,15 @@ import (
 
 const createChatroom = `-- name: CreateChatroom :one
 INSERT INTO chatrooms (
-  name, workflow_state, type, created_by
+ id, name, workflow_state, type, created_by
 ) VALUES (
-  $1, $2, $3, $4
+  $1, $2, $3, $4, $5
 )
 RETURNING id, name, workflow_state, type, created_by, created_at, updated_at, deleted_at
 `
 
 type CreateChatroomParams struct {
+	ID            pgtype.UUID
 	Name          string
 	WorkflowState ChatroomWorkflowState
 	Type          ChatroomType
@@ -29,6 +30,7 @@ type CreateChatroomParams struct {
 
 func (q *Queries) CreateChatroom(ctx context.Context, arg CreateChatroomParams) (Chatroom, error) {
 	row := q.db.QueryRow(ctx, createChatroom,
+		arg.ID,
 		arg.Name,
 		arg.WorkflowState,
 		arg.Type,
