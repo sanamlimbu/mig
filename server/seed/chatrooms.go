@@ -9,6 +9,7 @@ import (
 	"mig/repository"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 )
 
@@ -19,7 +20,7 @@ func (s *SeederPostgreSQL) Chatrooms(ctx context.Context, users []mig.User) ([]m
 		return nil, err
 	}
 	defer func() {
-		if err := tx.Rollback(ctx); err != nil {
+		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
 			log.Error().Msg(err.Error())
 		}
 	}()

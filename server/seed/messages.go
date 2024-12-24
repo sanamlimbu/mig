@@ -2,10 +2,12 @@ package seed
 
 import (
 	"context"
+	"errors"
 	"mig"
 	"mig/db"
 	"mig/repository"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 )
 
@@ -17,7 +19,7 @@ func (s *SeederPostgreSQL) Messages(ctx context.Context, users []mig.User, chatr
 		return err
 	}
 	defer func() {
-		if err := tx.Rollback(ctx); err != nil {
+		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
 			log.Error().Msg(err.Error())
 		}
 	}()

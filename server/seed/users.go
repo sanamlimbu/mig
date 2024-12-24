@@ -2,10 +2,12 @@ package seed
 
 import (
 	"context"
+	"errors"
 	"mig"
 	"mig/db"
 	"mig/repository"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -20,7 +22,7 @@ func (s *SeederPostgreSQL) Users(ctx context.Context, count int) ([]mig.User, er
 		return nil, err
 	}
 	defer func() {
-		if err := tx.Rollback(ctx); err != nil {
+		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
 			log.Error().Msg(err.Error())
 		}
 	}()
