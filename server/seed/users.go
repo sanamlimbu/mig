@@ -77,7 +77,7 @@ func (s *SeederPostgreSQL) Users(ctx context.Context, uuids []string) ([]mig.Use
 		return nil, err
 	}
 
-	jackUUID, err := repository.NewPgTypeUUID()
+	jackUUID, err := repository.StringToUUID(UsersUUIDs[length-2])
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func (s *SeederPostgreSQL) Users(ctx context.Context, uuids []string) ([]mig.Use
 		return nil, err
 	}
 
-	roseUUID, err := repository.NewPgTypeUUID()
+	roseUUID, err := repository.StringToUUID(UsersUUIDs[length-1])
 	if err != nil {
 		return nil, err
 	}

@@ -47,16 +47,14 @@ db-migrate:
 	goose postgres "$(DB_CONNECTION_STRING)" -dir $(SERVER)/migrations up
 
 .PHONY: db-prepare
-db-prepare:
-	db-down db-migrate
+db-prepare: db-down db-migrate
 
 .PHONY: db-seed
 db-seed:
 	cd $(SERVER) && go run cmd/server/main.go seed
 
 .PHONY: db-reset
-db-reset:
-	db-down db-migrate db-seed
+db-reset: db-down db-migrate db-seed
 
 .PHONY: go-mod-tidy
 go-mod-tidy:

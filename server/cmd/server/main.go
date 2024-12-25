@@ -281,7 +281,7 @@ func seedDb(c *cli.Context) error {
 	}
 	fmt.Println("seeded chatrooms...")
 
-	if err := seeder.Friendships(ctx, seed.ChatroomUUIDs[:]); err != nil {
+	if err := seeder.Friendships(ctx, seed.UsersUUIDs[:]); err != nil {
 		return err
 	}
 	fmt.Println("seeded friendships...")
