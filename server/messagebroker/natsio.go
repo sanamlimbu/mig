@@ -10,44 +10,48 @@ import (
 
 type MessageBroker interface {
 	Publish(topic Topic, message []byte) error
-	Subscribe(topic Topic, msgHandler IncommingMessageHandler)
+	Subscribe(topic Topic, msgHandler IncommingMessageHandler) error
 	Close()
 }
 
 type Topic string
 
 const (
-	MessageCreatedTopic Topic = "message.created"
-	MessageDeletedTopic Topic = "message.deleted"
-	MessageUpdatedTopic Topic = "message.updated"
+	TopicMessageCreated Topic = "message.created"
+	TopicMessageDeleted Topic = "message.deleted"
+	TopicMessageUpdated Topic = "message.updated"
 )
 
-type Message interface {
-	GetTopic() string
+func GetAllTopics() []Topic {
+	return []Topic{
+		TopicMessageCreated,
+		TopicMessageUpdated,
+		TopicMessageDeleted,
+	}
 }
 
-type MessageCreatedTopicMessage struct {
-	ID          int64           `json:"id"`
-	SenderID    int64           `json:"sender_id"`
-	RecipientID int64           `json:"recipient_id"` // user id or chatroom id
+type TopicMessageCreatedPayload struct {
+	ID          string          `json:"id"`
+	SenderID    string          `json:"sender_id"`
+	RecipientID string          `json:"recipient_id"`
 	Content     string          `json:"content"`
 	MessageType mig.MessageType `json:"message_type"`
 }
 
-func (m MessageCreatedTopicMessage) GetTopic() string {
-	return string(MessageCreatedTopic)
-}
-
-type MessageDeletedTopicMessage struct {
-	ID          int64           `json:"id"`
-	SenderID    int64           `json:"sender_id"`
-	RecipientID int64           `json:"recipient_id"` // user id or chatroom id
+type TopicMessageUpdatedPayload struct {
+	ID          string          `json:"id"`
+	SenderID    string          `json:"sender_id"`
+	RecipientID string          `json:"recipient_id"`
 	Content     string          `json:"content"`
 	MessageType mig.MessageType `json:"message_type"`
 }
 
-func (m MessageDeletedTopicMessage) GetTopic() string {
-	return string(MessageDeletedTopic)
+type TopicMessageDeletedPayload struct {
+	ID          string          `json:"id"`
+	SenderID    string          `json:"sender_id"`
+	RecipientID string          `json:"recipient_id"`
+	Content     string          `json:"content"`
+	MessageType mig.MessageType `json:"message_type"`
 }
 
 type IncommingMessageHandler interface {
@@ -80,16 +84,27 @@ func (n *Nats) Publish(topic Topic, message []byte) error {
 	return nil
 }
 
-func (n *Nats) Subscribe(topic Topic, msgHandler IncommingMessageHandler) {
-	n.conn.Subscribe(string(topic), func(msg *nats.Msg) {
-		msgHandler.HandleBrokerMessage(topic, msg.Data)
+func (n *Nats) Subscribe(topic Topic, msgHandler IncommingMessageHandler) error {
+	_, err := n.conn.Subscribe(string(topic), func(msg *nats.Msg) {
+		if err := msgHandler.HandleBrokerMessage(topic, msg.Data); err != nil {
+			log.Error().Msg(err.Error())
+		}
 	})
-	n.conn.Flush()
+
+	if err != nil {
+		return err
+	}
+
+	if err := n.conn.Flush(); err != nil {
+		log.Error().Msg(err.Error())
+	}
 
 	if err := n.conn.LastError(); err != nil {
 		msg := fmt.Sprintf("subscribed topic %s: %s", string(topic), err.Error())
 		log.Error().Msg(msg)
 	}
+
+	return nil
 }
 
 func (n *Nats) Close() {

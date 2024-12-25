@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"mig/api"
+	"mig/auth"
 	"mig/chatroom"
 	"mig/db"
+	"mig/messagebroker"
 	"mig/repository"
 	"mig/seed"
 	"mig/user"
@@ -52,7 +54,7 @@ func main() {
 					&cli.StringFlag{Name: "environment", Value: "dev", EnvVars: []string{"MIG_ENVIRONMENT"}, Usage: "deployment environnment (dev, prod) of server"},
 					&cli.StringFlag{Name: "jwt_secret", Value: "devdev", EnvVars: []string{"MIG_JWT_SECRET"}, Usage: "secret to sign jwt"},
 					&cli.StringFlag{Name: "app_name", Value: "mig-api-server", EnvVars: []string{"MIG_APP_NAME"}, Usage: "application name"},
-					&cli.StringFlag{Name: "nats_secret", Value: "my-nats-secret", EnvVars: []string{"MIG_NATS_SECRET"}, Usage: "NATS secret token"},
+					&cli.StringFlag{Name: "nats_url", Value: "nats://my-nats-secret@localhost:4222", EnvVars: []string{"MIG_NATS_URL"}, Usage: "NATS url"},
 
 					&cli.StringFlag{Name: "database_user", Value: "mig", EnvVars: []string{"MIG_DATABASE_USER"}, Usage: "database user"},
 					&cli.StringFlag{Name: "database_pass", Value: "devdev", EnvVars: []string{"MIG_DATABASE_PASS"}, Usage: "database pass"},
@@ -116,10 +118,16 @@ func serve(c *cli.Context) error {
 		return fmt.Errorf("missing env: MIG_JWT_SECRET")
 	}
 
-	natsSecret := c.String("nats_secret")
-	if natsSecret == "" {
-		return fmt.Errorf("missing env: MIG_NATS_SECRET")
+	natsUrl := c.String("nats_url")
+	if natsUrl == "" {
+		return fmt.Errorf("missing env: MIG_NATS_URL")
 	}
+
+	nats, err := messagebroker.NewNats(natsUrl)
+	if err != nil {
+		return err
+	}
+	defer nats.Close()
 
 	conn, err := connectPostgreSQL(c)
 	if err != nil {
@@ -158,7 +166,29 @@ func serve(c *cli.Context) error {
 		return err
 	}
 
-	controller, err := api.NewHttpApiController(userService, chatroomService)
+	auther, err := auth.NewAuther(jwtSecret, addr)
+	if err != nil {
+		return err
+	}
+
+	authService, err := auth.NewService(userRepo, auther)
+	if err != nil {
+		return err
+	}
+
+	hub, err := api.NewWsHub(nats, authService, userService)
+	if err != nil {
+		return err
+	}
+	go hub.Run(c.Context)
+
+	for _, topic := range messagebroker.GetAllTopics() {
+		if err := nats.Subscribe(topic, hub); err != nil {
+			return err
+		}
+	}
+
+	controller, err := api.NewHttpApiController(hub, userService, chatroomService)
 	if err != nil {
 		return err
 	}
