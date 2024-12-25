@@ -7,11 +7,15 @@ import (
 )
 
 type HttpApiController struct {
+	hub             *WsHub
 	userService     *user.Service
 	chatroomService *chatroom.Service
 }
 
-func NewHttpApiController(userService *user.Service, chatroomService *chatroom.Service) (*HttpApiController, error) {
+func NewHttpApiController(hub *WsHub, userService *user.Service, chatroomService *chatroom.Service) (*HttpApiController, error) {
+	if hub == nil {
+		return nil, fmt.Errorf("missing websocket hub")
+	}
 	if userService == nil {
 		return nil, fmt.Errorf("missing user service")
 	}

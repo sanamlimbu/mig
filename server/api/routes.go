@@ -32,6 +32,8 @@ func NewHttpRouter(c *HttpApiController) (*chi.Mux, error) {
 		MaxAge:           300,
 	}))
 
+	r.HandleFunc("/ws", c.hub.serveWebSockets)
+
 	r.Route("/api", func(r chi.Router) {
 		r.With(paginate).Get("/users/{user_id}/friends", c.GetFriends)
 		r.With(paginate).Get("/users/{user_id}/private-messages/{recipient_id}", c.GetPrivateMessages)
