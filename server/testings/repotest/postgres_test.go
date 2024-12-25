@@ -63,7 +63,9 @@ func TestMain(m *testing.M) {
 	hostAndPort := resource.GetHostPort("5432/tcp")
 	dbConnStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable&application_name=test", dbUser, dbPassword, hostAndPort, dbName)
 
-	resource.Expire(120)
+	if err := resource.Expire(120); err != nil {
+		log.Println(err.Error())
+	}
 
 	ctx := context.Background()
 
