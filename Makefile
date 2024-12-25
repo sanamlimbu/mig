@@ -64,6 +64,10 @@ go-mod-tidy:
 go-errcheck:
 	cd $(SERVER) && errcheck ./...
 
+.PHONY: go-lint
+go-lint:
+	cd $(SERVER) && golangci-lint run ./...
+
 .PHONY: go-test
 go-test:
 	cd $(SERVER) && go test ./testings/... -v
