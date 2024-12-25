@@ -151,24 +151,24 @@ func seedDB(ctx context.Context, conn *pgx.Conn, queries *db.Queries) error {
 		return err
 	}
 
-	users, err := seeder.Users(ctx, seed.UsersUUIDs[:])
+	_, err = seeder.Users(ctx, seed.UsersUUIDs[:])
 	if err != nil {
 		return err
 	}
 	fmt.Println("seeded users...")
 
-	chatrooms, err := seeder.Chatrooms(ctx, seed.UsersUUIDs[:], seed.ChatroomUUIDs[:])
+	_, err = seeder.Chatrooms(ctx, seed.UsersUUIDs[:], seed.ChatroomUUIDs[:])
 	if err != nil {
 		return err
 	}
 	fmt.Println("seeded chatrooms...")
 
-	if err := seeder.Friendships(ctx, users); err != nil {
+	if err := seeder.Friendships(ctx, seed.UsersUUIDs[:]); err != nil {
 		return err
 	}
 	fmt.Println("seeded friendships...")
 
-	if err := seeder.Messages(ctx, users, chatrooms); err != nil {
+	if err := seeder.Messages(ctx, seed.UsersUUIDs[:], seed.ChatroomUUIDs[:]); err != nil {
 		return err
 	}
 	fmt.Println("seeded messages...")
