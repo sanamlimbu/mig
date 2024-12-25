@@ -257,13 +257,19 @@ func (c *Client) read() {
 			}
 		}
 
-		topic, payload, err := c.parseMessage(data)
+		payload, err := c.parseMessage(data)
 		if err != nil {
 			log.Error().Msg(err.Error())
 			continue
 		}
 
-		err = c.hub.broker.Publish(topic, payload)
+		bytes, err := json.Marshal(payload)
+		if err != nil {
+			log.Error().Msg(err.Error())
+			continue
+		}
+
+		err = c.hub.broker.Publish(payload.GetTopic(), bytes)
 		if err != nil {
 			log.Error().Msg(err.Error())
 		}
@@ -352,30 +358,42 @@ type WebsocketMessage struct {
 	Payload     any                  `json:"payload"`
 }
 
-// parseMessage parses data and returns message broker topic and payload.
-func (c *Client) parseMessage(data []byte) (messagebroker.Topic, []byte, error) {
+// parseMessage parses data and returns message broker's message.
+func (c *Client) parseMessage(data []byte) (messagebroker.Message, error) {
 	var msg WebsocketMessage
 
 	if err := json.Unmarshal(data, &msg); err != nil {
-		return "", nil, err
+		return nil, fmt.Errorf("unable to unmarshal websocket message: %w", err)
 	}
 
-	payload, err := json.Marshal(msg.Payload)
+	bytes, err := json.Marshal(msg.Payload)
 	if err != nil {
-		return "", nil, err
+		return nil, fmt.Errorf("unable to marshal websocket message payload: %w", err)
 	}
 
 	switch msg.MessageType {
 	case WebsocketMessageTypeMessageCreated:
-		return messagebroker.TopicMessageCreated, payload, nil
+		var payload messagebroker.TopicMessageCreatedPayload
+		if err := json.Unmarshal(bytes, &payload); err != nil {
+			return nil, fmt.Errorf("unable to unmarshal message created payload: %w", err)
+		}
+		return payload, nil
 
 	case WebsocketMessageTypeMessageUpdated:
-		return messagebroker.TopicMessageUpdated, payload, nil
+		var payload messagebroker.TopicMessageUpdatedPayload
+		if err := json.Unmarshal(bytes, &payload); err != nil {
+			return nil, fmt.Errorf("unable to unmarshal message updated payload: %w", err)
+		}
+		return payload, nil
 
 	case WebsocketMessageTypeMessageDeleted:
-		return messagebroker.TopicMessageDeleted, payload, nil
+		var payload messagebroker.TopicMessageDeletedPayload
+		if err := json.Unmarshal(bytes, &payload); err != nil {
+			return nil, fmt.Errorf("unable to unmarshal message deleted payload: %w", err)
+		}
+		return payload, nil
 
 	default:
-		return "", nil, fmt.Errorf("unknown websocket message type")
+		return nil, fmt.Errorf("unknown websocket message type: %s", msg.MessageType)
 	}
 }

@@ -30,12 +30,20 @@ func GetAllTopics() []Topic {
 	}
 }
 
+type Message interface {
+	GetTopic() Topic
+}
+
 type TopicMessageCreatedPayload struct {
 	ID          string          `json:"id"`
 	SenderID    string          `json:"sender_id"`
 	RecipientID string          `json:"recipient_id"`
 	Content     string          `json:"content"`
 	MessageType mig.MessageType `json:"message_type"`
+}
+
+func (m TopicMessageCreatedPayload) GetTopic() Topic {
+	return TopicMessageCreated
 }
 
 type TopicMessageUpdatedPayload struct {
@@ -46,12 +54,20 @@ type TopicMessageUpdatedPayload struct {
 	MessageType mig.MessageType `json:"message_type"`
 }
 
+func (m TopicMessageUpdatedPayload) GetTopic() Topic {
+	return TopicMessageUpdated
+}
+
 type TopicMessageDeletedPayload struct {
 	ID          string          `json:"id"`
 	SenderID    string          `json:"sender_id"`
 	RecipientID string          `json:"recipient_id"`
 	Content     string          `json:"content"`
 	MessageType mig.MessageType `json:"message_type"`
+}
+
+func (m TopicMessageDeletedPayload) GetTopic() Topic {
+	return TopicMessageDeleted
 }
 
 type IncommingMessageHandler interface {
