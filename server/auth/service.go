@@ -1,14 +1,19 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"mig"
 	"mig/repository"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type JwtAudience string
@@ -69,7 +74,7 @@ func NewAuther(secret, issuer string) (*Auther, error) {
 	return auther, nil
 }
 
-func (a *Auther) NewAccessToken(user mig.User, audience []JwtAudience, sessionID string) (string, Claims, error) {
+func (a *Auther) NewAccessToken(user mig.User, audience []JwtAudience) (string, Claims, error) {
 	aud := make([]string, len(audience))
 	for _, str := range aud {
 		aud = append(aud, string(str))
@@ -140,4 +145,138 @@ func (a *Auther) parseJwtToken(token string) (string, error) {
 // ParseJwtToken checks validity of token and returns user id.
 func (s *Service) ParseJwtToken(token string) (string, error) {
 	return s.auther.parseJwtToken(token)
+}
+
+type LoginResponse struct {
+	AccessToken  string   `json:"access_token"`
+	ExpiresAt    int64    `json:"expires_at"`
+	ExpiresIn    int      `json:"expires_in"`
+	RefreshToken string   `json:"refresh_token"`
+	User         mig.User `json:"user"`
+}
+
+func (s *Service) Login(ctx context.Context, username, password string) (LoginResponse, error) {
+	user, err := s.userRepo.GetUserByUsername(ctx, username)
+	if err != nil {
+		return LoginResponse{}, mig.NewError("Incorrect username or password.", err, mig.UnauthorizedError)
+	}
+
+	passwordHash, err := s.userRepo.GetPassword(ctx, user.ID)
+	if err != nil {
+		return LoginResponse{}, mig.NewError("Incorrect username or password.", err, mig.UnauthorizedError)
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password))
+	if err != nil {
+		return LoginResponse{}, mig.NewError("Incorrect username or password.", err, mig.UnauthorizedError)
+	}
+
+	accessToken, claims, err := s.auther.NewAccessToken(user, []JwtAudience{JwtAudienceAuthenticated})
+	if err != nil {
+		return LoginResponse{}, mig.NewError(mig.ErrMsgSomethingWentWrong, err, mig.InternalServerError)
+	}
+
+	refreshToken, err := s.auther.NewRefreshToken()
+	if err != nil {
+		return LoginResponse{}, mig.NewError(mig.ErrMsgSomethingWentWrong, err, mig.InternalServerError)
+	}
+
+	arg := repository.UpsertRefreshTokenParams{
+		UserID:    user.ID,
+		Token:     refreshToken,
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+		Revoked:   false,
+	}
+
+	token, err := s.userRepo.UpsertRefreshToken(ctx, arg)
+	if err != nil {
+		return LoginResponse{}, mig.NewError(mig.ErrMsgSomethingWentWrong, err, mig.InternalServerError)
+	}
+
+	resp := LoginResponse{
+		AccessToken:  accessToken,
+		ExpiresAt:    claims.ExpiresAt.Unix(),
+		ExpiresIn:    int(claims.ExpiresAt.Unix() - claims.IssuedAt.Unix()),
+		RefreshToken: token.Token,
+		User:         user,
+	}
+
+	return resp, nil
+}
+
+type SignupResponse struct {
+	AccessToken  string   `json:"access_token"`
+	ExpiresAt    int64    `json:"expires_at"`
+	ExpiresIn    int      `json:"expires_in"`
+	RefreshToken string   `json:"refresh_token"`
+	User         mig.User `json:"user"`
+}
+
+func (s *Service) Signup(ctx context.Context, username, email, password string) (SignupResponse, error) {
+	user, err := s.userRepo.GetUserByUsername(ctx, username)
+	if err == nil {
+		return SignupResponse{}, mig.NewError("User already exits.", err, mig.InvalidInputError)
+	}
+
+	if !errors.Is(err, sql.ErrNoRows) {
+		return SignupResponse{}, mig.NewError(mig.ErrMsgSomethingWentWrong, err, mig.InternalServerError)
+	}
+
+	user, err = s.userRepo.GetUserByEmail(ctx, email)
+	if err == nil {
+		return SignupResponse{}, mig.NewError("User already exits.", err, mig.InvalidInputError)
+	}
+
+	if !errors.Is(err, sql.ErrNoRows) {
+		return SignupResponse{}, mig.NewError(mig.ErrMsgSomethingWentWrong, err, mig.InternalServerError)
+	}
+
+	userID := uuid.New().String()
+
+	user = mig.User{
+		ID:            userID,
+		Email:         email,
+		Username:      username,
+		WorkflowState: mig.UserWorkflowStateUnverified,
+	}
+
+	accessToken, claims, err := s.auther.NewAccessToken(user, []JwtAudience{JwtAudienceAuthenticated})
+	if err != nil {
+		return SignupResponse{}, mig.NewError(mig.ErrMsgSomethingWentWrong, err, mig.InternalServerError)
+	}
+
+	refreshToken, err := s.auther.NewRefreshToken()
+	if err != nil {
+		return SignupResponse{}, mig.NewError(mig.ErrMsgSomethingWentWrong, err, mig.InternalServerError)
+	}
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), 8)
+	if err != nil {
+		return SignupResponse{}, mig.NewError(mig.ErrMsgSomethingWentWrong, err, mig.InternalServerError)
+	}
+
+	arg := repository.CreateUserWithRefreshTokenParams{
+		ID:            userID,
+		Email:         email,
+		Username:      username,
+		WorkflowState: user.WorkflowState,
+		Password:      string(passwordHash),
+		RefreshToken:  refreshToken,
+		ExpiresAt:     time.Now().Add(24 * time.Hour),
+	}
+
+	user, _, err = s.userRepo.CreateUserWithRefreshToken(ctx, arg)
+	if err != nil {
+		return SignupResponse{}, mig.NewError(mig.ErrMsgSomethingWentWrong, err, mig.InternalServerError)
+	}
+
+	resp := SignupResponse{
+		AccessToken:  accessToken,
+		ExpiresAt:    claims.ExpiresAt.Unix(),
+		ExpiresIn:    int(claims.ExpiresAt.Unix() - claims.IssuedAt.Unix()),
+		RefreshToken: refreshToken,
+		User:         user,
+	}
+
+	return resp, nil
 }

@@ -107,7 +107,7 @@ func TestMain(m *testing.M) {
 
 	queries := db.New(conn)
 
-	userRepo, err = repository.NewUserRepositoryPostgreSQL(queries)
+	userRepo, err = repository.NewUserRepositoryPostgreSQL(conn, queries)
 	if err != nil {
 		log.Fatalf("could not create user repository: %s", err)
 	}

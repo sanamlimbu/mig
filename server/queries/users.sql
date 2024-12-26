@@ -70,6 +70,10 @@ JOIN users u ON u.id = friends.id
 LIMIT @page_size
 OFFSET @page;
 
+-- name: GetPassword :one
+SELECT password FROM users
+WHERE id = $1 LIMIT 1;
+
 
 
 
@@ -83,11 +87,11 @@ INSERT INTO users (
 RETURNING *;
 
 
--- name: CreateRefreshToken :one
+-- name: UpsertRefreshToken :one
 INSERT INTO refresh_tokens (
-  user_id, token, expires_at
+  user_id, token, expires_at, revoked
 ) VALUES (
-  $1, $2, $3
+  $1, $2, $3, $4
 )
 RETURNING *;
 

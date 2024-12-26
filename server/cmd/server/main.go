@@ -146,7 +146,7 @@ func serve(c *cli.Context) error {
 
 	queries := db.New(conn)
 
-	userRepo, err := repository.NewUserRepositoryPostgreSQL(queries)
+	userRepo, err := repository.NewUserRepositoryPostgreSQL(conn, queries)
 	if err != nil {
 		return err
 	}
@@ -188,7 +188,7 @@ func serve(c *cli.Context) error {
 		}
 	}
 
-	controller, err := api.NewHttpApiController(hub, userService, chatroomService)
+	controller, err := api.NewHttpApiController(hub, userService, chatroomService, authService)
 	if err != nil {
 		return err
 	}

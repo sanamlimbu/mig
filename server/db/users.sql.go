@@ -51,35 +51,6 @@ func (q *Queries) CreatePrivateMessage(ctx context.Context, arg CreatePrivateMes
 	return i, err
 }
 
-const createRefreshToken = `-- name: CreateRefreshToken :one
-INSERT INTO refresh_tokens (
-  user_id, token, expires_at
-) VALUES (
-  $1, $2, $3
-)
-RETURNING id, user_id, token, expires_at, created_at, revoked
-`
-
-type CreateRefreshTokenParams struct {
-	UserID    pgtype.UUID
-	Token     string
-	ExpiresAt pgtype.Timestamp
-}
-
-func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error) {
-	row := q.db.QueryRow(ctx, createRefreshToken, arg.UserID, arg.Token, arg.ExpiresAt)
-	var i RefreshToken
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.Token,
-		&i.ExpiresAt,
-		&i.CreatedAt,
-		&i.Revoked,
-	)
-	return i, err
-}
-
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
   id, email, username, password, workflow_state
@@ -217,6 +188,18 @@ func (q *Queries) GetFriendsByFriendshipWorkflowStates(ctx context.Context, arg 
 		return nil, err
 	}
 	return items, nil
+}
+
+const getPassword = `-- name: GetPassword :one
+SELECT password FROM users
+WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetPassword(ctx context.Context, id pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getPassword, id)
+	var password string
+	err := row.Scan(&password)
+	return password, err
 }
 
 const getPrivateConversation = `-- name: GetPrivateConversation :many
@@ -418,6 +401,41 @@ func (q *Queries) UpsertFriendship(ctx context.Context, arg UpsertFriendshipPara
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const upsertRefreshToken = `-- name: UpsertRefreshToken :one
+INSERT INTO refresh_tokens (
+  user_id, token, expires_at, revoked
+) VALUES (
+  $1, $2, $3, $4
+)
+RETURNING id, user_id, token, expires_at, created_at, revoked
+`
+
+type UpsertRefreshTokenParams struct {
+	UserID    pgtype.UUID
+	Token     string
+	ExpiresAt pgtype.Timestamp
+	Revoked   pgtype.Bool
+}
+
+func (q *Queries) UpsertRefreshToken(ctx context.Context, arg UpsertRefreshTokenParams) (RefreshToken, error) {
+	row := q.db.QueryRow(ctx, upsertRefreshToken,
+		arg.UserID,
+		arg.Token,
+		arg.ExpiresAt,
+		arg.Revoked,
+	)
+	var i RefreshToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Token,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.Revoked,
 	)
 	return i, err
 }

@@ -228,9 +228,10 @@ func (ns NullMessageWorkflowState) Value() (driver.Value, error) {
 type UserWorkflowState string
 
 const (
-	UserWorkflowStateActive    UserWorkflowState = "active"
-	UserWorkflowStateSuspended UserWorkflowState = "suspended"
-	UserWorkflowStateDeleted   UserWorkflowState = "deleted"
+	UserWorkflowStateActive     UserWorkflowState = "active"
+	UserWorkflowStateSuspended  UserWorkflowState = "suspended"
+	UserWorkflowStateUnverified UserWorkflowState = "unverified"
+	UserWorkflowStateDeleted    UserWorkflowState = "deleted"
 )
 
 func (e *UserWorkflowState) Scan(src interface{}) error {

@@ -4,6 +4,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TYPE user_workflow_state AS ENUM (
     'active',
     'suspended',
+    'unverified',
     'deleted'
 );
 

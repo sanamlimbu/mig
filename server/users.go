@@ -14,15 +14,17 @@ type User struct {
 type UserWorkflowState string
 
 const (
-	UserWorkflowStateActive    UserWorkflowState = "active"
-	UserWorkflowStateSuspended UserWorkflowState = "suspended"
-	UserWorkflowStateDeleted   UserWorkflowState = "deleted"
+	UserWorkflowStateActive     UserWorkflowState = "active"
+	UserWorkflowStateSuspended  UserWorkflowState = "suspended"
+	UserWorkflowStateDeleted    UserWorkflowState = "deleted"
+	UserWorkflowStateUnverified UserWorkflowState = "unverified"
 )
 
 func AllUserWorkflowState() []UserWorkflowState {
 	return []UserWorkflowState{
 		UserWorkflowStateActive,
 		UserWorkflowStateSuspended,
+		UserWorkflowStateUnverified,
 		UserWorkflowStateDeleted,
 	}
 }
@@ -53,5 +55,4 @@ type RefreshToken struct {
 	Token     string
 	ExpiresAt time.Time
 	Revoked   bool
-	CreatedAt time.Time
 }

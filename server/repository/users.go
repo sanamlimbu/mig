@@ -2,9 +2,15 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"mig"
 	"mig/db"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/rs/zerolog/log"
 )
 
 type UserRepository interface {
@@ -32,18 +38,33 @@ type UserRepository interface {
 
 	// GetUserByUsername returns user for specified username.
 	GetUserByUsername(ctx context.Context, username string) (mig.User, error)
+
+	// GetPassword returns password for specified user id.
+	GetPassword(ctx context.Context, userID string) (string, error)
+
+	// CreateUserWithRefreshToken creates user and refresh token.
+	CreateUserWithRefreshToken(ctx context.Context, arg CreateUserWithRefreshTokenParams) (mig.User, mig.RefreshToken, error)
+
+	// UpsertRefreshToken creates or updates refresh token.
+	UpsertRefreshToken(ctx context.Context, arg UpsertRefreshTokenParams) (mig.RefreshToken, error)
 }
 
 type UserRepositoryPostgreSQL struct {
+	conn    *pgx.Conn
 	queries *db.Queries
 }
 
-func NewUserRepositoryPostgreSQL(queries *db.Queries) (*UserRepositoryPostgreSQL, error) {
+func NewUserRepositoryPostgreSQL(conn *pgx.Conn, queries *db.Queries) (*UserRepositoryPostgreSQL, error) {
+	if conn == nil {
+		return nil, fmt.Errorf("missing conn")
+	}
+
 	if queries == nil {
 		return nil, fmt.Errorf("missing queries")
 	}
 
 	repo := &UserRepositoryPostgreSQL{
+		conn:    conn,
 		queries: queries,
 	}
 
@@ -229,4 +250,120 @@ func (r *UserRepositoryPostgreSQL) GetPrivateConversation(ctx context.Context, f
 	}
 
 	return getPrivateMessagesFromDBModel(result), nil
+}
+
+func (r *UserRepositoryPostgreSQL) GetPassword(ctx context.Context, userID string) (string, error) {
+	uuid, err := StringToUUID(userID)
+	if err != nil {
+		return "", err
+	}
+
+	return r.queries.GetPassword(ctx, uuid)
+}
+
+func getRefreshTokenFromDBModel(refreshToken db.RefreshToken) mig.RefreshToken {
+	return mig.RefreshToken{
+		ID:        UUIDToString(refreshToken.ID),
+		UserID:    UUIDToString(refreshToken.UserID),
+		Token:     refreshToken.Token,
+		ExpiresAt: refreshToken.ExpiresAt.Time,
+		Revoked:   refreshToken.Revoked.Bool,
+	}
+}
+
+type CreateUserWithRefreshTokenParams struct {
+	ID            string
+	Email         string
+	Username      string
+	WorkflowState mig.UserWorkflowState
+	Password      string
+	RefreshToken  string
+	ExpiresAt     time.Time
+}
+
+func (r *UserRepositoryPostgreSQL) CreateUserWithRefreshToken(ctx context.Context, arg CreateUserWithRefreshTokenParams) (mig.User, mig.RefreshToken, error) {
+	tx, err := r.conn.Begin(ctx)
+	if err != nil {
+		return mig.User{}, mig.RefreshToken{}, err
+	}
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			log.Error().Msg(err.Error())
+		}
+	}()
+
+	qtx := r.queries.WithTx(tx)
+
+	uuid, err := StringToUUID(arg.ID)
+	if err != nil {
+		return mig.User{}, mig.RefreshToken{}, err
+	}
+
+	user, err := qtx.CreateUser(ctx, db.CreateUserParams{
+		ID:            uuid,
+		Email:         arg.Email,
+		Username:      arg.Username,
+		Password:      arg.Password,
+		WorkflowState: db.UserWorkflowState(arg.WorkflowState),
+	})
+	if err != nil {
+		return mig.User{}, mig.RefreshToken{}, err
+	}
+
+	refreshToken, err := qtx.UpsertRefreshToken(ctx, db.UpsertRefreshTokenParams{
+		UserID: uuid,
+		Token:  arg.RefreshToken,
+		ExpiresAt: pgtype.Timestamp{
+			Time:  arg.ExpiresAt,
+			Valid: true,
+		},
+		Revoked: pgtype.Bool{
+			Bool:  false,
+			Valid: true,
+		},
+	})
+	if err != nil {
+		return mig.User{}, mig.RefreshToken{}, err
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return mig.User{}, mig.RefreshToken{}, err
+	}
+
+	return getUserFromDBModel(user), getRefreshTokenFromDBModel(refreshToken), nil
+}
+
+type UpsertRefreshTokenParams struct {
+	UserID    string
+	Token     string
+	ExpiresAt time.Time
+	Revoked   bool
+}
+
+func (r *UserRepositoryPostgreSQL) UpsertRefreshToken(ctx context.Context, arg UpsertRefreshTokenParams) (mig.RefreshToken, error) {
+
+	uuid, err := StringToUUID(arg.UserID)
+	if err != nil {
+		return mig.RefreshToken{}, err
+
+	}
+	refreshToken, err := r.queries.UpsertRefreshToken(ctx, db.UpsertRefreshTokenParams{
+		UserID: uuid,
+		Token:  arg.Token,
+		ExpiresAt: pgtype.Timestamp{
+			Time:  arg.ExpiresAt,
+			Valid: true,
+		},
+		Revoked: pgtype.Bool{
+			Bool:  false,
+			Valid: true,
+		},
+	})
+
+	if err != nil {
+		return mig.RefreshToken{}, err
+	}
+
+	return getRefreshTokenFromDBModel(refreshToken), nil
 }

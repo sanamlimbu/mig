@@ -12,6 +12,11 @@ const (
 	NotFoundError       ErrorType = "not-found"
 )
 
+const (
+	ErrMsgSomethingWentWrong string = "Something went wrong. Please try again later."
+	ErrMsgUnableToJsonEnode  string = "Unable to json encode response."
+)
+
 type Error struct {
 	msg     string
 	err     error
@@ -58,5 +63,3 @@ func HttpErrorReply(w http.ResponseWriter, e error) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
-
-const ErrMsgUnableToJsonEnode string = "unable to json encode response"
