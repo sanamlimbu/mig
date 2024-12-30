@@ -1,12 +1,15 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import Login from './components/login';
+import Home from './components/home';
+import AuthProvider from './providers/auth';
 
 const queryClient = new QueryClient();
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Login />
+      <AuthProvider>
+        <Home />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

@@ -1,5 +1,7 @@
 import { login } from '@/api/auth';
 import { Input } from '@/components/ui/input';
+import { useAuth } from '@/hooks/auth';
+import { extractErrorMessage } from '@/utils/errors';
 import { useMutation } from '@tanstack/react-query';
 import { AlertCircle } from 'lucide-react';
 import { FormEvent, useState } from 'react';
@@ -13,19 +15,22 @@ export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const { login: authLogin } = useAuth();
 
   const mutation = useMutation({
-    mutationFn: async () => login(username, password),
+    mutationFn: () => login(username, password),
     onSuccess: (data) => {
-      localStorage.setItem('mig-auth-token', JSON.stringify(data));
+      localStorage.setItem('mig-auth-token', JSON.stringify(data.data));
+      authLogin(data.data.user);
     },
     onError: (error) => {
-      setErrorMsg(error.message);
+      setErrorMsg(extractErrorMessage(error));
     },
   });
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setErrorMsg('');
 
     if (username === '') {
       setErrorMsg('Username is required.');
@@ -49,14 +54,20 @@ export default function Login() {
           <Input
             type="text"
             placeholder="Username"
-            onChange={(e) => setUsername(e.currentTarget.value)}
+            onChange={(e) => {
+              setErrorMsg('');
+              setUsername(e.currentTarget.value);
+            }}
             className="mb-4"
           />
           <Label>Password</Label>
           <Input
             type="password"
             placeholder="Password"
-            onChange={(e) => setPassword(e.currentTarget.value)}
+            onChange={(e) => {
+              setErrorMsg('');
+              setPassword(e.currentTarget.value);
+            }}
             className="mb-4"
           />
           <Button variant="outline" type="submit" className="mb-4">
