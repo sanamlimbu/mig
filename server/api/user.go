@@ -80,18 +80,38 @@ func (c *HttpApiController) GetFriends(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetPrivateMessages handler returns messages exchanged between two users.
+// GetPrivateConversation handler returns messages exchanged between two users.
 // It expects user ID and recipient ID to be passed as URL parameters.
 // Result is paginated based on the provided `pagination` query parameters.
 // Pagination is optional: if not provided, default pagination settings will be used.
-func (c *HttpApiController) GetPrivateMessages(w http.ResponseWriter, r *http.Request) {
+func (c *HttpApiController) GetPrivateConversation(w http.ResponseWriter, r *http.Request) {
 	firstUserID := chi.URLParam(r, "user_id")
 
 	secondUserID := chi.URLParam(r, "recipient_id")
 
 	pagination := mig.NewPagination(r)
 
-	result, err := c.userService.GetPrivateMessages(r.Context(), firstUserID, secondUserID, pagination)
+	result, err := c.userService.GetPrivateConversation(r.Context(), firstUserID, secondUserID, pagination)
+	if err != nil {
+		mig.HttpErrorReply(w, err)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		mig.HttpErrorReply(w, mig.NewError(mig.ErrMsgUnableToJsonEnode, err, mig.InternalServerError))
+	}
+}
+
+// GetPrivateMessages handler returns private messages of user.
+// Result is paginated based on the provided `pagination` query parameters.
+// Pagination is optional: if not provided, default pagination settings will be used.
+func (c *HttpApiController) GetPrivateMessages(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "user_id")
+
+	pagination := mig.NewPagination(r)
+
+	result, err := c.userService.GetPrivateMessages(r.Context(), userID, pagination)
+
 	if err != nil {
 		mig.HttpErrorReply(w, err)
 		return

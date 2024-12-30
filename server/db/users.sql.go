@@ -290,6 +290,87 @@ func (q *Queries) GetPrivateConversation(ctx context.Context, arg GetPrivateConv
 	return items, nil
 }
 
+const getPrivateMessages = `-- name: GetPrivateMessages :many
+SELECT m.id, m.sender_id, m.recipient_id, m.chatroom_id, m.workflow_state, m.message_type, m.content, m.is_read, m.created_at, m.updated_at, m.deleted_at,
+  s.username sender_username,
+  s.email sender_email,
+  s.workflow_state sender_workflow_state,
+  r.username recipient_username,
+  r.email recipient_email,
+  r.workflow_state recipient_workflow_state
+FROM messages m
+JOIN users s ON s.id = m.sender_id
+JOIN users r ON r.id = m.recipient_id
+WHERE m.sender_id = $1 OR m.recipient_id = $1
+ORDER BY m.created_at DESC
+LIMIT $3
+OFFSET $2
+`
+
+type GetPrivateMessagesParams struct {
+	UserID   pgtype.UUID
+	Page     int32
+	PageSize int32
+}
+
+type GetPrivateMessagesRow struct {
+	ID                     pgtype.UUID
+	SenderID               pgtype.UUID
+	RecipientID            pgtype.UUID
+	ChatroomID             pgtype.UUID
+	WorkflowState          MessageWorkflowState
+	MessageType            MessageType
+	Content                string
+	IsRead                 pgtype.Bool
+	CreatedAt              pgtype.Timestamptz
+	UpdatedAt              pgtype.Timestamptz
+	DeletedAt              pgtype.Timestamptz
+	SenderUsername         string
+	SenderEmail            string
+	SenderWorkflowState    UserWorkflowState
+	RecipientUsername      string
+	RecipientEmail         string
+	RecipientWorkflowState UserWorkflowState
+}
+
+func (q *Queries) GetPrivateMessages(ctx context.Context, arg GetPrivateMessagesParams) ([]GetPrivateMessagesRow, error) {
+	rows, err := q.db.Query(ctx, getPrivateMessages, arg.UserID, arg.Page, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPrivateMessagesRow
+	for rows.Next() {
+		var i GetPrivateMessagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SenderID,
+			&i.RecipientID,
+			&i.ChatroomID,
+			&i.WorkflowState,
+			&i.MessageType,
+			&i.Content,
+			&i.IsRead,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.SenderUsername,
+			&i.SenderEmail,
+			&i.SenderWorkflowState,
+			&i.RecipientUsername,
+			&i.RecipientEmail,
+			&i.RecipientWorkflowState,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUser = `-- name: GetUser :one
 SELECT id, email, username, password, workflow_state, reset_password_url, created_at, updated_at, deleted_at FROM users
 WHERE id = $1 LIMIT 1

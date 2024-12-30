@@ -66,9 +66,9 @@ func (s *Service) GetFriendsByFriendshipWorkflowStates(ctx context.Context, user
 	return result, nil
 }
 
-// GetPrivateMessages returns messages communicated between two given users.
+// GetPrivateConversation returns messages communicated between two given users.
 // Result is paginated.
-func (s *Service) GetPrivateMessages(ctx context.Context, firstUserID, secondUserID string, pagination mig.Pagination) ([]mig.PrivateMessage, error) {
+func (s *Service) GetPrivateConversation(ctx context.Context, firstUserID, secondUserID string, pagination mig.Pagination) ([]mig.PrivateMessage, error) {
 	_, err := s.userRepo.GetUser(ctx, firstUserID)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return nil, mig.NewError(fmt.Sprintf("not found user of id %s", firstUserID), err, mig.NotFoundError)
@@ -104,6 +104,26 @@ func (s *Service) GetUser(ctx context.Context, userID string) (mig.User, error) 
 
 	if err != nil {
 		return mig.User{}, mig.NewError(fmt.Sprintf("unable to fetch user of id %s", userID), err, mig.InternalServerError)
+	}
+
+	return result, nil
+}
+
+// GetPrivateMessages returns private messages of given users.
+// Result is paginated.
+func (s *Service) GetPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.PrivateMessage, error) {
+	_, err := s.userRepo.GetUser(ctx, userID)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return nil, mig.NewError(fmt.Sprintf("not found user of id %s", userID), err, mig.NotFoundError)
+	}
+
+	if err != nil {
+		return nil, mig.NewError(fmt.Sprintf("unable to fetch user of id %s", userID), err, mig.InternalServerError)
+	}
+
+	result, err := s.userRepo.GetPrivateMessages(ctx, userID, pagination)
+	if err != nil {
+		return nil, mig.NewError(fmt.Sprintf("unable to fetch private messages of user id %s", userID), err, mig.InternalServerError)
 	}
 
 	return result, nil
