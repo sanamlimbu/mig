@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
@@ -69,16 +69,23 @@ func TestMain(m *testing.M) {
 
 	ctx := context.Background()
 
-	var conn *pgx.Conn
+	var connPool *pgxpool.Pool
 
 	pool.MaxWait = 120 * time.Second
 	if err = pool.Retry(func() error {
-		conn, err = pgx.Connect(ctx, dbConnStr)
+		config, err := pgxpool.ParseConfig(dbConnStr)
+		if err != nil {
+			return nil
+		}
+
+		config.AfterConnect = repository.RegisterDataTypes
+
+		connPool, err = pgxpool.NewWithConfig(ctx, config)
 		if err != nil {
 			return err
 		}
 
-		return conn.Ping(ctx)
+		return connPool.Ping(ctx)
 	}); err != nil {
 		log.Fatalf("could not connect to docker: %s", err)
 	}
@@ -89,25 +96,16 @@ func TestMain(m *testing.M) {
 		}
 	}()
 
-	defer func() {
-		if err := conn.Close(ctx); err != nil {
-			log.Printf("unable to close database connection: %s", err)
-		}
-	}()
+	defer connPool.Close()
 
 	err = runMigrationsUp(dbConnStr)
 	if err != nil {
 		log.Fatalf("unable to run migrations: %s", err)
 	}
 
-	err = repository.RegisterDataTypes(ctx, conn)
-	if err != nil {
-		log.Fatalf("unable to register pgx data types: %s", err)
-	}
+	queries := db.New(connPool)
 
-	queries := db.New(conn)
-
-	userRepo, err = repository.NewUserRepositoryPostgreSQL(conn, queries)
+	userRepo, err = repository.NewUserRepositoryPostgreSQL(connPool, queries)
 	if err != nil {
 		log.Fatalf("could not create user repository: %s", err)
 	}
@@ -117,7 +115,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("could not create chatroom repository: %s", err)
 	}
 
-	err = seedDB(ctx, conn, queries)
+	err = seedDB(ctx, connPool, queries)
 	if err != nil {
 		log.Fatalf("unable to seed database: %s", err)
 	}
@@ -147,8 +145,8 @@ func runMigrationsUp(dbConnStr string) error {
 	return nil
 }
 
-func seedDB(ctx context.Context, conn *pgx.Conn, queries *db.Queries) error {
-	seeder, err := seed.NewSeederPostgreSQL(conn, queries)
+func seedDB(ctx context.Context, pool *pgxpool.Pool, queries *db.Queries) error {
+	seeder, err := seed.NewSeederPostgreSQL(pool, queries)
 	if err != nil {
 		return err
 	}

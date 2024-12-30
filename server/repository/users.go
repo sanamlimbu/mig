@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 )
 
@@ -33,6 +34,10 @@ type UserRepository interface {
 	// Returned messages are paginated.
 	GetPrivateConversation(ctx context.Context, firstUserID, secondUserID string, pagination mig.Pagination) ([]mig.PrivateMessage, error)
 
+	// GetPrivateMessages returns private messages of specified user.
+	// Returned messages are paginated.
+	GetPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.PrivateMessage, error)
+
 	// GetUserByEmail returns user for specified email address.
 	GetUserByEmail(ctx context.Context, email string) (mig.User, error)
 
@@ -50,13 +55,13 @@ type UserRepository interface {
 }
 
 type UserRepositoryPostgreSQL struct {
-	conn    *pgx.Conn
+	pool    *pgxpool.Pool
 	queries *db.Queries
 }
 
-func NewUserRepositoryPostgreSQL(conn *pgx.Conn, queries *db.Queries) (*UserRepositoryPostgreSQL, error) {
-	if conn == nil {
-		return nil, fmt.Errorf("missing conn")
+func NewUserRepositoryPostgreSQL(pool *pgxpool.Pool, queries *db.Queries) (*UserRepositoryPostgreSQL, error) {
+	if pool == nil {
+		return nil, fmt.Errorf("missing pool")
 	}
 
 	if queries == nil {
@@ -64,7 +69,7 @@ func NewUserRepositoryPostgreSQL(conn *pgx.Conn, queries *db.Queries) (*UserRepo
 	}
 
 	repo := &UserRepositoryPostgreSQL{
-		conn:    conn,
+		pool:    pool,
 		queries: queries,
 	}
 
@@ -252,6 +257,46 @@ func (r *UserRepositoryPostgreSQL) GetPrivateConversation(ctx context.Context, f
 	return getPrivateMessagesFromDBModel(result), nil
 }
 
+func (r *UserRepositoryPostgreSQL) GetPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.PrivateMessage, error) {
+	userUUID, err := StringToUUID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid uuid %s", userID)
+	}
+
+	arg := db.GetPrivateMessagesParams{
+		UserID:   userUUID,
+		Page:     int32(pagination.Page),
+		PageSize: int32(pagination.PageSize),
+	}
+
+	msgs, err := r.queries.GetPrivateMessages(ctx, arg)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]mig.PrivateMessage, len(msgs))
+
+	for i, msg := range msgs {
+		result[i] = mig.PrivateMessage{
+			ID:                     UUIDToString(msg.ID),
+			Content:                msg.Content,
+			WorkflowState:          mig.MessageWorkflowState(msg.WorkflowState),
+			Type:                   mig.MessageType(msg.MessageType),
+			CreatedAt:              msg.CreatedAt.Time,
+			SenderID:               UUIDToString(msg.SenderID),
+			RecipientID:            UUIDToString(msg.RecipientID),
+			SenderUsername:         msg.SenderUsername,
+			SenderEmail:            msg.SenderEmail,
+			SenderWorkflowState:    mig.UserWorkflowState(msg.SenderWorkflowState),
+			RecipientUsername:      msg.RecipientUsername,
+			RecipientEmail:         msg.RecipientEmail,
+			RecipientWorkflowState: mig.UserWorkflowState(msg.RecipientWorkflowState),
+		}
+	}
+
+	return result, nil
+}
+
 func (r *UserRepositoryPostgreSQL) GetPassword(ctx context.Context, userID string) (string, error) {
 	uuid, err := StringToUUID(userID)
 	if err != nil {
@@ -282,7 +327,7 @@ type CreateUserWithRefreshTokenParams struct {
 }
 
 func (r *UserRepositoryPostgreSQL) CreateUserWithRefreshToken(ctx context.Context, arg CreateUserWithRefreshTokenParams) (mig.User, mig.RefreshToken, error) {
-	tx, err := r.conn.Begin(ctx)
+	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return mig.User{}, mig.RefreshToken{}, err
 	}

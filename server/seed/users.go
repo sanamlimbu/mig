@@ -18,7 +18,7 @@ import (
 // Two users Jack(username: jack, email: jack@example.com, password: jack123) and
 // Rose(username: rose, email:rose@example.com, password: rose123) are also created.
 func (s *SeederPostgreSQL) Users(ctx context.Context, uuids []string) ([]mig.User, error) {
-	tx, err := s.conn.Begin(ctx)
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}

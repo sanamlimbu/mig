@@ -13,7 +13,7 @@ import (
 // Messages creates two messages for each user in each chatroom and also creates messages
 // between all unique pairs of users.
 func (s *SeederPostgreSQL) Messages(ctx context.Context, userUUIDs, chatroomUUIDs []string) error {
-	tx, err := s.conn.Begin(ctx)
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}

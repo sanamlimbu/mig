@@ -5,18 +5,18 @@ import (
 	"mig/db"
 
 	"github.com/brianvoe/gofakeit/v7"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type SeederPostgreSQL struct {
-	conn    *pgx.Conn
+	pool    *pgxpool.Pool
 	queries *db.Queries
 	faker   *gofakeit.Faker
 }
 
-func NewSeederPostgreSQL(conn *pgx.Conn, queries *db.Queries) (*SeederPostgreSQL, error) {
-	if conn == nil {
-		return nil, fmt.Errorf("missing conn")
+func NewSeederPostgreSQL(pool *pgxpool.Pool, queries *db.Queries) (*SeederPostgreSQL, error) {
+	if pool == nil {
+		return nil, fmt.Errorf("missing pool")
 	}
 
 	if queries == nil {
@@ -24,7 +24,7 @@ func NewSeederPostgreSQL(conn *pgx.Conn, queries *db.Queries) (*SeederPostgreSQL
 	}
 
 	seeder := &SeederPostgreSQL{
-		conn:    conn,
+		pool:    pool,
 		queries: queries,
 		faker:   gofakeit.New(0),
 	}

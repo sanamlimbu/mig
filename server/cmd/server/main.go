@@ -17,7 +17,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 
 	"github.com/urfave/cli/v2"
@@ -129,24 +129,15 @@ func serve(c *cli.Context) error {
 	}
 	defer nats.Close()
 
-	conn, err := connectPostgreSQL(c)
+	pool, err := connectPostgreSQL(c)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := conn.Close(c.Context); err != nil {
-			log.Error().Msg(err.Error())
-		}
-	}()
+	defer pool.Close()
 
-	err = repository.RegisterDataTypes(c.Context, conn)
-	if err != nil {
-		return err
-	}
+	queries := db.New(pool)
 
-	queries := db.New(conn)
-
-	userRepo, err := repository.NewUserRepositoryPostgreSQL(conn, queries)
+	userRepo, err := repository.NewUserRepositoryPostgreSQL(pool, queries)
 	if err != nil {
 		return err
 	}
@@ -229,7 +220,7 @@ func serve(c *cli.Context) error {
 	return nil
 }
 
-func connectPostgreSQL(c *cli.Context) (*pgx.Conn, error) {
+func connectPostgreSQL(c *cli.Context) (*pgxpool.Pool, error) {
 	dbUser := c.String("database_user")
 	if dbUser == "" {
 		return nil, fmt.Errorf("missing env: MIG_DATABASE_USER")
@@ -260,7 +251,7 @@ func connectPostgreSQL(c *cli.Context) (*pgx.Conn, error) {
 		return nil, fmt.Errorf("missing env: MIG_APP_NAME")
 	}
 
-	config := repository.PostgreSQLConnectionConfig{
+	config := repository.PostgreSQLConnPoolConfig{
 		User:       dbUser,
 		Pass:       dbPass,
 		Host:       dbHost,
@@ -270,31 +261,25 @@ func connectPostgreSQL(c *cli.Context) (*pgx.Conn, error) {
 		AppVersion: version,
 	}
 
-	conn, err := repository.NewPostgreSQLConnection(c.Context, config)
+	pool, err := repository.NewPostgreSQLConnPool(c.Context, config)
 	if err != nil {
 		return nil, err
 	}
 
-	return conn, nil
+	return pool, nil
 }
 
 func seedDb(c *cli.Context) error {
 	ctx := c.Context
 
-	conn, err := connectPostgreSQL(c)
+	pool, err := connectPostgreSQL(c)
 	if err != nil {
 		return err
 	}
 
-	defer func() {
-		if err := conn.Close(ctx); err != nil {
-			log.Error().Msg(err.Error())
-		}
-	}()
+	queries := db.New(pool)
 
-	queries := db.New(conn)
-
-	seeder, err := seed.NewSeederPostgreSQL(conn, queries)
+	seeder, err := seed.NewSeederPostgreSQL(pool, queries)
 	if err != nil {
 		return err
 	}

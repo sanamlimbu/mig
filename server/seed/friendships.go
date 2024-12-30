@@ -12,7 +12,7 @@ import (
 
 // Friendships will create friendships between each users.
 func (s *SeederPostgreSQL) Friendships(ctx context.Context, userUUIDs []string) error {
-	tx, err := s.conn.Begin(ctx)
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}

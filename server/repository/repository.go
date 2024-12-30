@@ -9,9 +9,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type PostgreSQLConnectionConfig struct {
+type PostgreSQLConnPoolConfig struct {
 	User       string
 	Pass       string
 	Host       string
@@ -21,7 +22,7 @@ type PostgreSQLConnectionConfig struct {
 	AppVersion string
 }
 
-func NewPostgreSQLConnection(ctx context.Context, config PostgreSQLConnectionConfig) (*pgx.Conn, error) {
+func NewPostgreSQLConnPool(ctx context.Context, config PostgreSQLConnPoolConfig) (*pgxpool.Pool, error) {
 	params := url.Values{}
 
 	params.Add("sslmode", "disable")
@@ -36,14 +37,16 @@ func NewPostgreSQLConnection(ctx context.Context, config PostgreSQLConnectionCon
 		params.Encode(),
 	)
 
-	connConfig, err := pgx.ParseConfig(connString)
+	poolConfig, err := pgxpool.ParseConfig(connString)
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := pgx.ConnectConfig(ctx, connConfig)
+	poolConfig.AfterConnect = RegisterDataTypes
 
-	return conn, err
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+
+	return pool, err
 }
 
 func RegisterDataTypes(ctx context.Context, conn *pgx.Conn) error {

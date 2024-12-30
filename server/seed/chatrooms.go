@@ -15,7 +15,7 @@ import (
 
 // Chatrooms will create one public chatroom per user as creator.
 func (s *SeederPostgreSQL) Chatrooms(ctx context.Context, userUUIDs, chatroomUUIDs []string) ([]mig.Chatroom, error) {
-	tx, err := s.conn.Begin(ctx)
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
