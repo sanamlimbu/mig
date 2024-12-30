@@ -2,7 +2,7 @@ import { useAuth } from '@/hooks/auth';
 import {
   ChatBubbleIcon,
   Component1Icon,
-  TargetIcon,
+  GroupIcon,
 } from '@radix-ui/react-icons';
 import { useState } from 'react';
 import Chatrooms from './chatrooms';
@@ -55,7 +55,7 @@ function Menus({ menu, updateMenu }: MenusProps) {
         className={classes + (menu === 'Status' ? 'bg-gray-200' : '')}
         onClick={() => updateMenu('Status')}
       >
-        <TargetIcon className="w-6 h-6" />
+        <GroupIcon className="w-6 h-6" />
       </div>
       <div
         className={classes + (menu === 'Chatrooms' ? 'bg-gray-200' : '')}

@@ -37,7 +37,9 @@ export interface Chatroom {
   id: string;
   name: string;
   workflow_state: ChatroomWorkflowState;
+  status: string;
   type: ChatroomType;
+  avatar_url: string;
   created_by: string;
   creator_username: string;
   creator_email: string;
