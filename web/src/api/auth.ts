@@ -15,3 +15,25 @@ export function login(username: string, password: string) {
     password: password,
   });
 }
+
+interface RefreshAccessTokenResponse {
+  access_token: string;
+}
+
+export function refreshAccessToken() {
+  const accessToken = window.sessionStorage.getItem('access-token');
+  const refreshToken = window.sessionStorage.getItem('refresh-token');
+
+  if (!accessToken) {
+    throw new Error('Missing access token.');
+  }
+
+  if (!refreshToken) {
+    throw new Error('Missing refresh token.');
+  }
+
+  return axios.post<RefreshAccessTokenResponse>('/refresh-token', {
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+}

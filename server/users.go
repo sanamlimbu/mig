@@ -4,11 +4,20 @@ import (
 	"time"
 )
 
+type UserRole string
+
+const (
+	SuperAdminUserRole UserRole = "superadmin"
+	AdminUserRole      UserRole = "admin"
+	MemberUserRole     UserRole = "member"
+)
+
 type User struct {
 	ID            string            `json:"id"`
 	Email         string            `json:"email"`
 	Username      string            `json:"username"`
 	WorkflowState UserWorkflowState `json:"workflow_state"`
+	Role          UserRole          `json:"role"`
 }
 
 type UserWorkflowState string

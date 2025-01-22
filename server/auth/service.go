@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
 	"errors"
@@ -14,12 +15,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
-)
-
-type JwtAudience string
-
-const (
-	JwtAudienceAuthenticated JwtAudience = "authenticated"
 )
 
 type Service struct {
@@ -50,10 +45,12 @@ type Auther struct {
 }
 
 type Claims struct {
-	ID            string                `json:"id"`
-	Username      string                `json:"username"`
-	Email         string                `json:"email"`
-	WorkflowState mig.UserWorkflowState `json:"workflow_state"`
+	UserID          string                `json:"user_id"`
+	Username        string                `json:"username"`
+	Email           string                `json:"email"`
+	UserRole        mig.UserRole          `json:"user_role"`
+	UserFingerprint string                `json:"user_fingerprint"`
+	WorkflowState   mig.UserWorkflowState `json:"workflow_state"`
 	jwt.RegisteredClaims
 }
 
@@ -74,51 +71,68 @@ func NewAuther(secret, issuer string) (*Auther, error) {
 	return auther, nil
 }
 
-func (a *Auther) NewAccessToken(user mig.User, audience []JwtAudience) (string, Claims, error) {
-	aud := make([]string, len(audience))
-	for _, str := range aud {
-		aud = append(aud, string(str))
+func GetHash(input string) string {
+	hash := sha256.Sum256([]byte(input))
+	return base64.StdEncoding.EncodeToString(hash[:])
+}
+
+func (a *Auther) newAccessToken(user mig.User) (string, string, *Claims, error) {
+	userFingerprint, err := generateRandomString(32)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("unable to create access token: %w", err)
 	}
 
+	userFingerprintHash := GetHash(userFingerprint)
+
+	now := time.Now()
+
 	claims := Claims{
-		ID:            user.ID,
-		Username:      user.Username,
-		Email:         user.Email,
-		WorkflowState: user.WorkflowState,
+		UserID:          user.ID,
+		Username:        user.Username,
+		Email:           user.Email,
+		WorkflowState:   user.WorkflowState,
+		UserFingerprint: userFingerprintHash,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(60 * time.Minute)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(now.Add(15 * time.Minute)),
+			IssuedAt:  jwt.NewNumericDate(now),
+			NotBefore: jwt.NewNumericDate(now),
 			Issuer:    a.issuer,
 			Subject:   user.ID,
 			ID:        user.ID,
-			Audience:  aud,
+			Audience:  jwt.ClaimStrings{string(user.Role)},
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	ss, err := token.SignedString(a.secret)
 	if err != nil {
-		return "", Claims{}, fmt.Errorf("unable to create access token: %w", err)
+		return "", "", nil, fmt.Errorf("unable to create access token: %w", err)
 	}
 
-	return ss, claims, nil
+	return ss, userFingerprint, nil, nil
 }
 
-// NewRefreshToken generates a base64-encoded random string of length 32 as an opaque refresh token.
-func (a *Auther) NewRefreshToken() (string, error) {
-	b := make([]byte, 32)
+// newRefreshToken generates a base64-encoded random string of length 32 as an opaque refresh token.
+func newRefreshToken() (string, error) {
+	str, err := generateRandomString(32)
+	if err != nil {
+		return "", fmt.Errorf("unable to create refresh token: %w", err)
+	}
+	return str, nil
+}
+
+func generateRandomString(length int) (string, error) {
+	b := make([]byte, length)
 
 	_, err := rand.Read(b)
 	if err != nil {
-		return "", fmt.Errorf("unable to create refresh token: %w", err)
+		return "", fmt.Errorf("unable to create random string: %w", err)
 	}
 
 	return base64.StdEncoding.EncodeToString(b), nil
 }
 
-// parseJwtToken checks validity of token and returns user id.
-func (a *Auther) parseJwtToken(token string) (string, error) {
+func (a *Auther) verifyAccessToken(token string) (bool, *Claims, error) {
 	t, err := jwt.ParseWithClaims(token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -128,31 +142,27 @@ func (a *Auther) parseJwtToken(token string) (string, error) {
 	})
 
 	if err != nil {
-		return "", fmt.Errorf("unable to parse token: %w", err)
-	}
-
-	if !t.Valid {
-		return "", fmt.Errorf("invalid token")
+		return false, nil, fmt.Errorf("unable to parse access token: %w", err)
 	}
 
 	if claims, ok := t.Claims.(*Claims); ok {
-		return claims.ID, nil
+		return t.Valid, claims, nil
 	}
 
-	return "", fmt.Errorf("unable to validate jwt claims")
+	return false, nil, fmt.Errorf("invalid access token")
 }
 
-// ParseJwtToken checks validity of token and returns user id.
-func (s *Service) ParseJwtToken(token string) (string, error) {
-	return s.auther.parseJwtToken(token)
+func (s *Service) VerifyAccessToken(token string) (bool, *Claims, error) {
+	return s.auther.verifyAccessToken(token)
 }
 
 type LoginResponse struct {
-	AccessToken  string   `json:"access_token"`
-	ExpiresAt    int64    `json:"expires_at"`
-	ExpiresIn    int      `json:"expires_in"`
-	RefreshToken string   `json:"refresh_token"`
-	User         mig.User `json:"user"`
+	AccessToken     string   `json:"access_token"`
+	ExpiresAt       int64    `json:"expires_at"`
+	ExpiresIn       int      `json:"expires_in"`
+	RefreshToken    string   `json:"refresh_token"`
+	User            mig.User `json:"user"`
+	UserFingerprint string
 }
 
 func (s *Service) Login(ctx context.Context, username, password string) (LoginResponse, error) {
@@ -171,12 +181,12 @@ func (s *Service) Login(ctx context.Context, username, password string) (LoginRe
 		return LoginResponse{}, mig.NewError("Incorrect username or password.", err, mig.UnauthorizedError)
 	}
 
-	accessToken, claims, err := s.auther.NewAccessToken(user, []JwtAudience{JwtAudienceAuthenticated})
+	accessToken, userFingerprint, claims, err := s.auther.newAccessToken(user)
 	if err != nil {
 		return LoginResponse{}, mig.NewError(mig.ErrMsgSomethingWentWrong, err, mig.InternalServerError)
 	}
 
-	refreshToken, err := s.auther.NewRefreshToken()
+	refreshToken, err := newRefreshToken()
 	if err != nil {
 		return LoginResponse{}, mig.NewError(mig.ErrMsgSomethingWentWrong, err, mig.InternalServerError)
 	}
@@ -194,22 +204,24 @@ func (s *Service) Login(ctx context.Context, username, password string) (LoginRe
 	}
 
 	resp := LoginResponse{
-		AccessToken:  accessToken,
-		ExpiresAt:    claims.ExpiresAt.Unix(),
-		ExpiresIn:    int(claims.ExpiresAt.Unix() - claims.IssuedAt.Unix()),
-		RefreshToken: token.Token,
-		User:         user,
+		AccessToken:     accessToken,
+		ExpiresAt:       claims.ExpiresAt.Unix(),
+		ExpiresIn:       int(claims.ExpiresAt.Unix() - claims.IssuedAt.Unix()),
+		RefreshToken:    token.Token,
+		User:            user,
+		UserFingerprint: userFingerprint,
 	}
 
 	return resp, nil
 }
 
 type SignupResponse struct {
-	AccessToken  string   `json:"access_token"`
-	ExpiresAt    int64    `json:"expires_at"`
-	ExpiresIn    int      `json:"expires_in"`
-	RefreshToken string   `json:"refresh_token"`
-	User         mig.User `json:"user"`
+	AccessToken     string   `json:"access_token"`
+	ExpiresAt       int64    `json:"expires_at"`
+	ExpiresIn       int      `json:"expires_in"`
+	RefreshToken    string   `json:"refresh_token"`
+	User            mig.User `json:"user"`
+	UserFingerprint string
 }
 
 func (s *Service) Signup(ctx context.Context, username, email, password string) (SignupResponse, error) {
@@ -238,14 +250,15 @@ func (s *Service) Signup(ctx context.Context, username, email, password string) 
 		Email:         email,
 		Username:      username,
 		WorkflowState: mig.UserWorkflowStateUnverified,
+		Role:          mig.MemberUserRole,
 	}
 
-	accessToken, claims, err := s.auther.NewAccessToken(user, []JwtAudience{JwtAudienceAuthenticated})
+	accessToken, userFingerprint, claims, err := s.auther.newAccessToken(user)
 	if err != nil {
 		return SignupResponse{}, mig.NewError(mig.ErrMsgSomethingWentWrong, err, mig.InternalServerError)
 	}
 
-	refreshToken, err := s.auther.NewRefreshToken()
+	refreshToken, err := newRefreshToken()
 	if err != nil {
 		return SignupResponse{}, mig.NewError(mig.ErrMsgSomethingWentWrong, err, mig.InternalServerError)
 	}
@@ -271,11 +284,61 @@ func (s *Service) Signup(ctx context.Context, username, email, password string) 
 	}
 
 	resp := SignupResponse{
-		AccessToken:  accessToken,
-		ExpiresAt:    claims.ExpiresAt.Unix(),
-		ExpiresIn:    int(claims.ExpiresAt.Unix() - claims.IssuedAt.Unix()),
-		RefreshToken: refreshToken,
-		User:         user,
+		AccessToken:     accessToken,
+		ExpiresAt:       claims.ExpiresAt.Unix(),
+		ExpiresIn:       int(claims.ExpiresAt.Unix() - claims.IssuedAt.Unix()),
+		RefreshToken:    refreshToken,
+		User:            user,
+		UserFingerprint: userFingerprint,
+	}
+
+	return resp, nil
+}
+
+type RefreshTokenResponse struct {
+	AccessToken     string   `json:"access_token"`
+	ExpiresAt       int64    `json:"expires_at"`
+	ExpiresIn       int      `json:"expires_in"`
+	User            mig.User `json:"user"`
+	UserFingerprint string
+}
+
+func (s *Service) RefreshToken(ctx context.Context, accessToken, refreshToken string, fingerprint string) (RefreshTokenResponse, error) {
+	_, claims, err := s.VerifyAccessToken(accessToken)
+	if err != nil {
+		return RefreshTokenResponse{}, err
+	}
+
+	hash := GetHash(fingerprint)
+	if hash != claims.UserFingerprint {
+		return RefreshTokenResponse{}, fmt.Errorf("invalid user fingerprint")
+	}
+
+	refresh, err := s.userRepo.GetRefreshToken(ctx, refreshToken)
+	if err != nil {
+		return RefreshTokenResponse{}, err
+	}
+
+	if time.Now().After(refresh.ExpiresAt) {
+		return RefreshTokenResponse{}, fmt.Errorf("refresh token expired")
+	}
+
+	user, err := s.userRepo.GetUser(ctx, refresh.UserID)
+	if err != nil {
+		return RefreshTokenResponse{}, err
+	}
+
+	accessToken, userFingerprint, claims, err := s.auther.newAccessToken(user)
+	if err != nil {
+		return RefreshTokenResponse{}, err
+	}
+
+	resp := RefreshTokenResponse{
+		AccessToken:     accessToken,
+		ExpiresAt:       claims.ExpiresAt.Unix(),
+		ExpiresIn:       int(claims.ExpiresAt.Unix() - claims.IssuedAt.Unix()),
+		User:            user,
+		UserFingerprint: userFingerprint,
 	}
 
 	return resp, nil

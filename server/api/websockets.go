@@ -328,12 +328,16 @@ func (c *Client) register(data []byte) error {
 		return err
 	}
 
-	userID, err := c.hub.authService.ParseJwtToken(msg.Token)
+	valid, claims, err := c.hub.authService.VerifyAccessToken(msg.Token)
 	if err != nil {
 		return err
 	}
 
-	user, err := c.hub.userService.GetUser(context.Background(), userID)
+	if !valid {
+		return fmt.Errorf("invalid access token")
+	}
+
+	user, err := c.hub.userService.GetUser(context.Background(), claims.UserID)
 	if err != nil {
 		return err
 	}

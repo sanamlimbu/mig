@@ -3,8 +3,10 @@ package api
 import (
 	"context"
 	"mig"
+	"mig/auth"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 const pageSize int = 10
@@ -28,6 +30,53 @@ func paginate(next http.Handler) http.Handler {
 		ctx = context.WithValue(ctx, mig.PageSizePaginationCtxValue, size)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
+	}
+
+	return http.HandlerFunc(fn)
+}
+
+func withAuth(c *HttpApiController, next http.HandlerFunc) http.HandlerFunc {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie(fingerprintCookie)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
+		authHeader := r.Header.Get("Authorization")
+
+		if authHeader == "" {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
+		const prefix = "Bearer "
+
+		if !strings.HasPrefix(authHeader, prefix) {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
+		token := strings.TrimPrefix(authHeader, prefix)
+		if token == "" {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
+		valid, claims, err := c.authService.VerifyAccessToken(token)
+		if err != nil || !valid {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
+		hash := auth.GetHash(cookie.Value)
+
+		if hash != claims.UserFingerprint {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
+		next(w, r)
 	}
 
 	return http.HandlerFunc(fn)

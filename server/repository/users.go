@@ -52,6 +52,8 @@ type UserRepository interface {
 
 	// UpsertRefreshToken creates or updates refresh token.
 	UpsertRefreshToken(ctx context.Context, arg UpsertRefreshTokenParams) (mig.RefreshToken, error)
+
+	GetRefreshToken(ctx context.Context, token string) (mig.RefreshToken, error)
 }
 
 type UserRepositoryPostgreSQL struct {
@@ -411,4 +413,8 @@ func (r *UserRepositoryPostgreSQL) UpsertRefreshToken(ctx context.Context, arg U
 	}
 
 	return getRefreshTokenFromDBModel(refreshToken), nil
+}
+
+func (r *UserRepositoryPostgreSQL) GetRefreshToken(ctx context.Context, token string) (mig.RefreshToken, error) {
+	return mig.RefreshToken{}, nil
 }
