@@ -1,7 +1,8 @@
 import { User } from '@/types';
+import { getAuthToken } from '@/utils/auth';
 import { axios } from '../axios';
 
-interface LoginResponse {
+export interface AuthToken {
   access_token: string;
   expires_at: number;
   expires_in: string;
@@ -10,7 +11,7 @@ interface LoginResponse {
 }
 
 export function login(username: string, password: string) {
-  return axios.post<LoginResponse>('/login', {
+  return axios.post<AuthToken>('/login', {
     username: username,
     password: password,
   });
@@ -21,19 +22,14 @@ interface RefreshAccessTokenResponse {
 }
 
 export function refreshAccessToken() {
-  const accessToken = window.sessionStorage.getItem('access-token');
-  const refreshToken = window.sessionStorage.getItem('refresh-token');
+  const authToken = getAuthToken();
 
-  if (!accessToken) {
-    throw new Error('Missing access token.');
-  }
-
-  if (!refreshToken) {
-    throw new Error('Missing refresh token.');
+  if (!authToken) {
+    throw new Error('Missing authentication token.');
   }
 
   return axios.post<RefreshAccessTokenResponse>('/refresh-token', {
-    access_token: accessToken,
-    refresh_token: refreshToken,
+    access_token: authToken.access_token,
+    refresh_token: authToken.refresh_token,
   });
 }

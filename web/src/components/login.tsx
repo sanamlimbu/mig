@@ -19,9 +19,8 @@ export default function Login() {
 
   const mutation = useMutation({
     mutationFn: () => login(username, password),
-    onSuccess: (data) => {
-      localStorage.setItem('mig-auth-token', JSON.stringify(data.data));
-      authLogin(data.data.user);
+    onSuccess: ({ data }) => {
+      authLogin(data);
     },
     onError: (error) => {
       setErrorMsg(extractErrorMessage(error));
