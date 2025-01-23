@@ -159,14 +159,26 @@ func (h *WsHub) serveWebSockets(w http.ResponseWriter, r *http.Request) {
 	go client.write()
 }
 
+type WebsocketMessageType string
+
+const (
+	MessageCreatedWebsocketMessageType WebsocketMessageType = "message_created"
+	MessageUpdatedWebsocketMessageType WebsocketMessageType = "message_updated"
+	MessageDeletedWebsocketMessageType WebsocketMessageType = "message_deleted"
+	AuthenticationWebsocketMessageType WebsocketMessageType = "authentication"
+)
+
+type WebsocketMessage struct {
+	Type    WebsocketMessageType `json:"type"`
+	Payload any                  `json:"payload"`
+}
+
 func (h *WsHub) HandleBrokerMessage(topic messagebroker.Topic, msg []byte) error {
 	switch topic {
 	case messagebroker.TopicMessageCreated:
 		{
 			var payload messagebroker.TopicMessageCreatedPayload
-
 			if err := json.Unmarshal(msg, &payload); err != nil {
-				log.Error().Msg(err.Error())
 				return err
 			}
 
@@ -181,9 +193,7 @@ func (h *WsHub) HandleBrokerMessage(topic messagebroker.Topic, msg []byte) error
 	case messagebroker.TopicMessageUpdated:
 		{
 			var payload messagebroker.TopicMessageUpdatedPayload
-
 			if err := json.Unmarshal(msg, &payload); err != nil {
-				log.Error().Msg(err.Error())
 				return err
 			}
 
@@ -198,9 +208,7 @@ func (h *WsHub) HandleBrokerMessage(topic messagebroker.Topic, msg []byte) error
 	case messagebroker.TopicMessageDeleted:
 		{
 			var payload messagebroker.TopicMessageDeletedPayload
-
 			if err := json.Unmarshal(msg, &payload); err != nil {
-				log.Error().Msg(err.Error())
 				return err
 			}
 
@@ -223,55 +231,67 @@ func (h *WsHub) HandleBrokerMessage(topic messagebroker.Topic, msg []byte) error
 func (c *Client) read() {
 	defer func() {
 		c.hub.unregister <- c
-		if err := c.conn.Close(); err != nil {
-			log.Error().Msg(err.Error())
-		}
+		_ = c.conn.Close()
 	}()
 
 	c.conn.SetReadLimit(maxMessageSize)
-
-	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
-		log.Error().Msg(err.Error())
-	}
-
+	_ = c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(func(string) error {
-		if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
-			log.Error().Msg(err.Error())
-		}
+		_ = c.conn.SetReadDeadline(time.Now().Add(pongWait))
 		return nil
 	})
 
+loop:
 	for {
-		_, data, err := c.conn.ReadMessage()
+		var msg WebsocketMessage
+		err := c.conn.ReadJSON(msg)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Error().Msg(err.Error())
 			}
-			break
+			break loop
 		}
 
-		if c.user == nil {
-			if err := c.register(data); err != nil {
-				log.Error().Msg(err.Error())
-				break
+		data, err := json.Marshal(msg.Payload)
+		if err != nil {
+			log.Error().Msg(err.Error())
+			break loop
+		}
+
+		switch msg.Type {
+		case AuthenticationWebsocketMessageType:
+			{
+				if c.user == nil {
+					if err := c.register(data); err != nil {
+						log.Error().Msg(err.Error())
+						break loop
+					}
+				}
 			}
-		}
+		case MessageCreatedWebsocketMessageType, MessageUpdatedWebsocketMessageType, MessageDeletedWebsocketMessageType:
+			{
+				payload, err := c.getPublishableBrokerMessage(msg.Type, data)
+				if err != nil {
+					log.Error().Msg(err.Error())
+					break loop
+				}
 
-		payload, err := c.parseMessage(data)
-		if err != nil {
-			log.Error().Msg(err.Error())
-			continue
-		}
+				data, err := json.Marshal(payload)
+				if err != nil {
+					log.Error().Msg(err.Error())
+					break loop
+				}
 
-		bytes, err := json.Marshal(payload)
-		if err != nil {
-			log.Error().Msg(err.Error())
-			continue
-		}
-
-		err = c.hub.broker.Publish(payload.GetTopic(), bytes)
-		if err != nil {
-			log.Error().Msg(err.Error())
+				err = c.hub.broker.Publish(payload.GetTopic(), data)
+				if err != nil {
+					log.Error().Msg(err.Error())
+				}
+			}
+		default:
+			{
+				log.Error().Msg(fmt.Sprintf("invalid websocket message type: %s", msg.Type))
+				break loop
+			}
 		}
 	}
 }
@@ -282,33 +302,26 @@ func (c *Client) write() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
-		if err := c.conn.Close(); err != nil {
-			log.Error().Msg(err.Error())
-		}
+		_ = c.conn.Close()
 	}()
 
 	for {
 		select {
 		case message, ok := <-c.send:
-			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
-				log.Error().Msg(err.Error())
-			}
-
-			if !ok {
-				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-					log.Error().Msg(err.Error())
+			{
+				_ = c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+				if !ok {
+					_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+					return
 				}
-				return
-			}
 
-			if err := c.conn.WriteJSON(message); err != nil {
-				return
+				if err := c.conn.WriteJSON(message); err != nil {
+					return
+				}
 			}
 
 		case <-ticker.C:
-			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
-				log.Error().Msg(err.Error())
-			}
+			_ = c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
@@ -316,19 +329,17 @@ func (c *Client) write() {
 	}
 }
 
-type WebsocketAuthMessage struct {
-	Token string `json:"token"`
-}
-
 // register parses auth message and registers client to websocket hub.
 func (c *Client) register(data []byte) error {
-	var msg WebsocketAuthMessage
+	var msg struct {
+		AccessToken string `json:"access_token"`
+	}
 
 	if err := json.Unmarshal(data, &msg); err != nil {
 		return err
 	}
 
-	valid, claims, err := c.hub.authService.VerifyAccessToken(msg.Token)
+	valid, claims, err := c.hub.authService.VerifyAccessToken(msg.AccessToken)
 	if err != nil {
 		return err
 	}
@@ -349,55 +360,30 @@ func (c *Client) register(data []byte) error {
 	return nil
 }
 
-type WebsocketMessageType string
-
-const (
-	WebsocketMessageTypeMessageCreated WebsocketMessageType = "message_created"
-	WebsocketMessageTypeMessageUpdated WebsocketMessageType = "message_updated"
-	WebsocketMessageTypeMessageDeleted WebsocketMessageType = "message_deleted"
-)
-
-type WebsocketMessage struct {
-	MessageType WebsocketMessageType `json:"message_type"`
-	Payload     any                  `json:"payload"`
-}
-
-// parseMessage parses data and returns message broker's message.
-func (c *Client) parseMessage(data []byte) (messagebroker.Message, error) {
-	var msg WebsocketMessage
-
-	if err := json.Unmarshal(data, &msg); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal websocket message: %w", err)
-	}
-
-	bytes, err := json.Marshal(msg.Payload)
-	if err != nil {
-		return nil, fmt.Errorf("unable to marshal websocket message payload: %w", err)
-	}
-
-	switch msg.MessageType {
-	case WebsocketMessageTypeMessageCreated:
+func (c *Client) getPublishableBrokerMessage(msgType WebsocketMessageType, data []byte) (messagebroker.Message, error) {
+	switch msgType {
+	case MessageCreatedWebsocketMessageType:
 		var payload messagebroker.TopicMessageCreatedPayload
-		if err := json.Unmarshal(bytes, &payload); err != nil {
+		if err := json.Unmarshal(data, &payload); err != nil {
 			return nil, fmt.Errorf("unable to unmarshal message created payload: %w", err)
 		}
 		return payload, nil
 
-	case WebsocketMessageTypeMessageUpdated:
+	case MessageUpdatedWebsocketMessageType:
 		var payload messagebroker.TopicMessageUpdatedPayload
-		if err := json.Unmarshal(bytes, &payload); err != nil {
+		if err := json.Unmarshal(data, &payload); err != nil {
 			return nil, fmt.Errorf("unable to unmarshal message updated payload: %w", err)
 		}
 		return payload, nil
 
-	case WebsocketMessageTypeMessageDeleted:
+	case MessageDeletedWebsocketMessageType:
 		var payload messagebroker.TopicMessageDeletedPayload
-		if err := json.Unmarshal(bytes, &payload); err != nil {
+		if err := json.Unmarshal(data, &payload); err != nil {
 			return nil, fmt.Errorf("unable to unmarshal message deleted payload: %w", err)
 		}
 		return payload, nil
 
 	default:
-		return nil, fmt.Errorf("unknown websocket message type: %s", msg.MessageType)
+		return nil, fmt.Errorf("unknown websocket message type: %s", msgType)
 	}
 }
