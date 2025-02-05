@@ -56,27 +56,19 @@ resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.main.id
 }
 
-# --- Public Route Table ---
+# --- Main Route Table of Mig VPC ---
 
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
+resource "aws_default_route_table" "rt" {
+  default_route_table_id = aws_vpc.main.default_route_table_id
 
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.gw.id
   }
-
   tags = {
-    Name = "${local.project_name}-public-route-table"
+    Name = "${local.project_name}-main-route-table"
   }
 }
-
-resource "aws_route_table_association" "public" {
-  count          = local.azs_count
-  subnet_id      = aws_subnet.public[count.index].id
-  route_table_id = aws_route_table.public.id
-}
-
 
 # --- EC2 Instance for NATS ---
 
@@ -106,16 +98,40 @@ resource "aws_instance" "nats" {
   instance_type               = var.nats_instance_type
   subnet_id                   = aws_subnet.public[0].id
   associate_public_ip_address = true
-
-
+  vpc_security_group_ids      = [aws_security_group.nats_sg.id]
   tags = {
     Name = "nats"
   }
 }
 
-resource "aws_ec2_instance_connect_endpoint" "connect" {
-  subnet_id = aws_subnet.public[0].id
+# --- Security Group for NATS Instance ---
+
+resource "aws_security_group" "nats_sg" {
+  vpc_id = aws_vpc.main.id
+  name   = "${local.project_name}-nats-sg"
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port   = 4222
+    to_port     = 4222
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   tags = {
-    Name = "nats-instance-connect"
+    Name = "${local.project_name}-nats-sg"
   }
 }
+
