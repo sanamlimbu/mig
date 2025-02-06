@@ -35,8 +35,8 @@ variable "db_port" {
   type        = number
 }
 
-variable "nats_instance_type" {
-  description = "EC2 instance type for NATS."
+variable "mig_instance_type" {
+  description = "EC2 instance type for api server."
   type        = string
   default     = "t2.micro"
 }
