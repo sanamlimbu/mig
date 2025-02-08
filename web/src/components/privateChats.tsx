@@ -19,7 +19,7 @@ export default function PrivateChats() {
       if (user === null) {
         return undefined;
       }
-      return getPrivateMessages(user.id, { page: 1, page_size: 20 });
+      return getPrivateMessages(user.id, { page: 1, page_size: 40 });
     },
   });
 

@@ -5,7 +5,10 @@ import { getAuthToken, removeAuthToken, setAuthToken } from '@/utils/auth';
 import { PropsWithChildren, useEffect, useState } from 'react';
 
 export default function AuthProvider(props: PropsWithChildren) {
-  const [user, setUser] = useState<User | null>(null);
+  const authToken = getAuthToken();
+  const [user, setUser] = useState<User | null>(
+    authToken ? authToken.user : null
+  );
 
   useEffect(() => {
     const syncLogout = (event: StorageEvent) => {
@@ -17,20 +20,20 @@ export default function AuthProvider(props: PropsWithChildren) {
 
     window.addEventListener('storage', syncLogout);
 
-    return window.removeEventListener('storage', syncLogout);
+    return () => window.removeEventListener('storage', syncLogout);
   }, []);
 
   useEffect(() => {
     const syncSession = (event: StorageEvent) => {
-      if (event.key === 'get-session-storage') {
+      if (event.key === 'get-session-storage' && sessionStorage.length) {
         localStorage.setItem('session-storage', JSON.stringify(sessionStorage));
+        localStorage.removeItem('get-session-storage');
         localStorage.removeItem('session-storage');
       } else if (event.key === 'session-storage' && !sessionStorage.length) {
         const newValue = event.newValue;
         if (!newValue) {
-          throw new Error(
-            'Missing event value for "session-storage" event key.'
-          );
+          console.error('Missing event value for "session-storage" event key.');
+          return;
         }
 
         const data = JSON.parse(newValue);
@@ -49,7 +52,7 @@ export default function AuthProvider(props: PropsWithChildren) {
       localStorage.setItem('get-session-storage', String(Date.now()));
     }
 
-    return window.removeEventListener('storage', syncSession);
+    return () => window.removeEventListener('storage', syncSession);
   }, []);
 
   const login = (data: AuthToken) => {

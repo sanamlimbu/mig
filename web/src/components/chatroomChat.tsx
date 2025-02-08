@@ -4,7 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Chatroom, User } from '@/types';
 import { DotsVerticalIcon, PersonIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import SendIcon from '../assets/send.svg';
 import { Textarea } from './ui/textarea';
 
@@ -13,7 +13,6 @@ interface ChatroomProps {
   chatroom: Chatroom;
 }
 export default function ChatroomChat({ user, chatroom }: ChatroomProps) {
-  const [content, setContent] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const { isPending, isError, data, error } = useQuery({
@@ -25,9 +24,7 @@ export default function ChatroomChat({ user, chatroom }: ChatroomProps) {
       }),
   });
 
-  const sendMessage = () => {
-    console.log(content);
-  };
+  const handleSend = () => {};
 
   if (isPending) {
     return <div>Loading</div>;
@@ -86,19 +83,15 @@ export default function ChatroomChat({ user, chatroom }: ChatroomProps) {
         </div>
       </ScrollArea>
       <div className="py-4 pl-4 pr-1 bg-gray-100 flex justify-between gap-3 items-center">
-        <Textarea
-          className="border-white bg-white"
-          onChange={(e) => setContent(e.currentTarget.value)}
-          ref={inputRef}
-        />
+        <Textarea className="border-white bg-white" ref={inputRef} />
         <img
           src={SendIcon}
           className="w-7 h-7 cursor-pointer"
           onClick={() => {
+            handleSend();
             if (inputRef.current) {
               inputRef.current.value = '';
             }
-            sendMessage();
           }}
         />
       </div>

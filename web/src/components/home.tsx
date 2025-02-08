@@ -1,10 +1,14 @@
+import { WS_BASE_URL } from '@/constants';
 import { useAuth } from '@/hooks/auth';
+import { WebSocketMessage } from '@/types';
+import { getAuthToken } from '@/utils/auth';
 import {
   ChatBubbleIcon,
   Component1Icon,
   GroupIcon,
 } from '@radix-ui/react-icons';
 import { useState } from 'react';
+import useWebSocket from 'react-use-websocket';
 import Chatrooms from './chatrooms';
 import Login from './login';
 import PrivateChats from './privateChats';
@@ -14,6 +18,24 @@ type Menu = 'Chats' | 'Status' | 'Chatrooms';
 export default function Home() {
   const { user } = useAuth();
   const [menu, setMenu] = useState<Menu>('Chats');
+  const { sendJsonMessage } = useWebSocket<WebSocketMessage>(WS_BASE_URL, {
+    share: true,
+    onOpen: () => {
+      const authToken = getAuthToken();
+      if (!authToken) {
+        return;
+      }
+
+      sendJsonMessage<WebSocketMessage>({
+        type: 'authentication',
+        payload: {
+          access_token: authToken.access_token,
+        },
+      });
+    },
+    // Prevent reconnection if no auth token.
+    shouldReconnect: () => !!getAuthToken(),
+  });
 
   if (user === null) {
     return <Login />;

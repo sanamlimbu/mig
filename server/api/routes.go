@@ -28,7 +28,7 @@ func NewHttpRouter(c *HttpApiController) (*chi.Mux, error) {
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: false,
+		AllowCredentials: true,
 		MaxAge:           300,
 	}))
 
@@ -39,14 +39,14 @@ func NewHttpRouter(c *HttpApiController) (*chi.Mux, error) {
 		r.Post("/signup", c.Signup)
 		r.Post("/refresh-token", c.RefreshToken)
 
-		r.With(paginate).Get("/users/{user_id}/friends", c.GetFriends)
-		r.With(paginate).Get("/users/{user_id}/private-conversation/{recipient_id}", c.GetPrivateConversation)
-		r.Get("/users/{user_id}", c.GetUser)
-		r.With(paginate).Get("/users/{user_id}/private-messages", c.GetPrivateMessages)
+		r.With(paginate).Get("/users/{user_id}/friends", withAuth(c, c.GetFriends))
+		r.With(paginate).Get("/users/{user_id}/private-conversation/{recipient_id}", withAuth(c, c.GetPrivateConversation))
+		r.Get("/users/{user_id}", withAuth(c, c.GetUser))
+		r.With(paginate).Get("/users/{user_id}/private-messages", withAuth(c, c.GetPrivateMessages))
 
-		r.With(paginate).Get("/chatrooms", c.GetChatrooms)
-		r.Get("/chatrooms/{chatroom_id}", c.GetChatroom)
-		r.With(paginate).Get("/chatrooms/{chatroom_id}/messages", c.GetChatroomMessages)
+		r.With(paginate).Get("/chatrooms", withAuth(c, c.GetChatrooms))
+		r.Get("/chatrooms/{chatroom_id}", withAuth(c, c.GetChatroom))
+		r.With(paginate).Get("/chatrooms/{chatroom_id}/messages", withAuth(c, c.GetChatroomMessages))
 	})
 
 	return r, nil

@@ -5,18 +5,17 @@ import a, {
 } from 'axios';
 import { refreshAccessToken } from './api/auth';
 import { API_BASE_URL } from './constants';
-import { getAccessToken } from './utils/auth';
+import { getAuthToken } from './utils/auth';
 
 export const axios = a.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
 });
 
 axios.interceptors.request.use(function (config: InternalAxiosRequestConfig) {
-  const accessToken = getAccessToken();
-  if (accessToken) {
-    config.headers.Authorization = `Bearer ${
-      JSON.parse(accessToken).access_token
-    }`;
+  const authToken = getAuthToken();
+  if (authToken) {
+    config.headers.Authorization = `Bearer ${authToken.access_token}`;
   }
 
   config.headers['Content-Type'] = 'application/json';

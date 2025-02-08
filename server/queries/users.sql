@@ -90,6 +90,10 @@ OFFSET @page;
 SELECT password FROM users
 WHERE id = $1 LIMIT 1;
 
+-- name: GetRefreshToken :one
+SELECT * FROM refresh_tokens
+WHERE token = $1 LIMIT 1;
+
 
 
 

@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-const fingerprintCookie string = "__Secure-Fingerprint"
+const fingerprintCookie string = "Fingerprint"
 
 type loginRequest struct {
 	Username string `json:"username"`
@@ -42,11 +42,12 @@ func (c *HttpApiController) Login(w http.ResponseWriter, r *http.Request) {
 		Name:     fingerprintCookie,
 		Value:    resp.UserFingerprint,
 		Path:     "/",
-		MaxAge:   15 * 60, // Access token age is 15 minutes.
+		MaxAge:   (15 * 60) + 2, // Access token age is 15 minutes.
 		HttpOnly: true,
 		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteNoneMode,
 	}
+
 	http.SetCookie(w, &cookie)
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
@@ -125,11 +126,12 @@ func (c *HttpApiController) RefreshToken(w http.ResponseWriter, r *http.Request)
 		Name:     fingerprintCookie,
 		Value:    resp.UserFingerprint,
 		Path:     "/",
-		MaxAge:   15 * 60, // Access token age is 15 minutes.
+		MaxAge:   (15 * 60) + 2, // Access token age is 15 minutes.
 		HttpOnly: true,
 		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteNoneMode,
 	}
+
 	http.SetCookie(w, cookie)
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {

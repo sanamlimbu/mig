@@ -17,16 +17,16 @@ type MessageBroker interface {
 type Topic string
 
 const (
-	TopicMessageCreated Topic = "message.created"
-	TopicMessageDeleted Topic = "message.deleted"
-	TopicMessageUpdated Topic = "message.updated"
+	MessageCreatedTopic Topic = "message.created"
+	MessageDeletedTopic Topic = "message.deleted"
+	MessageUpdatedTopic Topic = "message.updated"
 )
 
 func GetAllTopics() []Topic {
 	return []Topic{
-		TopicMessageCreated,
-		TopicMessageUpdated,
-		TopicMessageDeleted,
+		MessageCreatedTopic,
+		MessageUpdatedTopic,
+		MessageDeletedTopic,
 	}
 }
 
@@ -34,7 +34,7 @@ type Message interface {
 	GetTopic() Topic
 }
 
-type TopicMessageCreatedPayload struct {
+type MessageCreatedTopicPayload struct {
 	ID          string          `json:"id"`
 	SenderID    string          `json:"sender_id"`
 	RecipientID string          `json:"recipient_id"`
@@ -42,11 +42,11 @@ type TopicMessageCreatedPayload struct {
 	MessageType mig.MessageType `json:"message_type"`
 }
 
-func (m TopicMessageCreatedPayload) GetTopic() Topic {
-	return TopicMessageCreated
+func (m MessageCreatedTopicPayload) GetTopic() Topic {
+	return MessageCreatedTopic
 }
 
-type TopicMessageUpdatedPayload struct {
+type MessageUpdatedTopicPayload struct {
 	ID          string          `json:"id"`
 	SenderID    string          `json:"sender_id"`
 	RecipientID string          `json:"recipient_id"`
@@ -54,11 +54,11 @@ type TopicMessageUpdatedPayload struct {
 	MessageType mig.MessageType `json:"message_type"`
 }
 
-func (m TopicMessageUpdatedPayload) GetTopic() Topic {
-	return TopicMessageUpdated
+func (m MessageUpdatedTopicPayload) GetTopic() Topic {
+	return MessageUpdatedTopic
 }
 
-type TopicMessageDeletedPayload struct {
+type MessageDeletedTopicPayload struct {
 	ID          string          `json:"id"`
 	SenderID    string          `json:"sender_id"`
 	RecipientID string          `json:"recipient_id"`
@@ -66,8 +66,8 @@ type TopicMessageDeletedPayload struct {
 	MessageType mig.MessageType `json:"message_type"`
 }
 
-func (m TopicMessageDeletedPayload) GetTopic() Topic {
-	return TopicMessageDeleted
+func (m MessageDeletedTopicPayload) GetTopic() Topic {
+	return MessageDeletedTopic
 }
 
 type IncommingMessageHandler interface {

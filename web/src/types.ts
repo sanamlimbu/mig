@@ -12,8 +12,9 @@ export interface User {
   avatar_url: string;
 }
 
-type MessageWorkflowState = 'created' | 'updated' | 'deleted';
+export type MessageWorkflowState = 'created' | 'updated' | 'deleted';
 
+export type MessageType = 'private' | 'chatroom';
 export interface PrivateMessage {
   id: string;
   workflow_state: MessageWorkflowState;
@@ -58,4 +59,28 @@ export interface ChatroomMessage {
   sender_email: string;
   sender_username: string;
   sender_workflow_state: UserWorkflowState;
+}
+
+interface AuthenticationPayload {
+  access_token: string;
+}
+interface MessageCreatedPayload {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  content: string;
+  message_type: MessageType;
+}
+
+type WebSocketMessageType =
+  | 'authentication'
+  | 'message_created'
+  | 'message_updated'
+  | 'message_deleted';
+
+type WebSocketMessagePayload = AuthenticationPayload | MessageCreatedPayload;
+
+export interface WebSocketMessage {
+  type: WebSocketMessageType;
+  payload: WebSocketMessagePayload;
 }

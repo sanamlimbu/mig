@@ -1,6 +1,10 @@
 package mig
 
-import "time"
+import (
+	"time"
+
+	"github.com/guregu/null/v5"
+)
 
 type MessageType string
 
@@ -48,4 +52,36 @@ type PrivateMessage struct {
 	RecipientUsername      string               `json:"recipient_username"`
 	RecipientEmail         string               `json:"recipient_email"`
 	RecipientWorkflowState UserWorkflowState    `json:"recipient_workflow_state"`
+}
+
+type MessageCreated struct {
+	ID            string               `json:"id"`
+	SenderID      string               `json:"sender_id"`
+	RecipientID   null.String          `json:"recipient_id"`
+	ChatroomID    null.String          `json:"chatroom_id"`
+	Content       string               `json:"content"`
+	IsRead        bool                 `json:"is_read"`
+	MessageType   MessageType          `json:"message_type"`
+	WorkflowState MessageWorkflowState `json:"workflow_state"`
+	CreatedAt     time.Time            `json:"created_at"`
+	UpdatedAt     time.Time            `json:"updated_at"`
+	DeletedAt     null.String          `json:"deleted_at"`
+}
+
+type MessageUpdated struct {
+	ID            string               `json:"id"`
+	SenderID      string               `json:"sender_id"`
+	RecipientID   null.String          `json:"recipient_id"`
+	ChatroomID    null.String          `json:"chatroom_id"`
+	Content       string               `json:"content"`
+	IsRead        bool                 `json:"is_read"`
+	MessageType   MessageType          `json:"message_type"`
+	WorkflowState MessageWorkflowState `json:"workflow_state"`
+	CreatedAt     time.Time            `json:"created_at"`
+	UpdatedAt     time.Time            `json:"updated_at"`
+	DeletedAt     null.String          `json:"deleted_at"`
+}
+
+type MessageDeleted struct {
+	ID string `json:"id"`
 }

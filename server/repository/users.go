@@ -416,5 +416,16 @@ func (r *UserRepositoryPostgreSQL) UpsertRefreshToken(ctx context.Context, arg U
 }
 
 func (r *UserRepositoryPostgreSQL) GetRefreshToken(ctx context.Context, token string) (mig.RefreshToken, error) {
-	return mig.RefreshToken{}, nil
+	refresh, err := r.queries.GetRefreshToken(ctx, token)
+	if err != nil {
+		return mig.RefreshToken{}, err
+	}
+
+	return mig.RefreshToken{
+		ID:        UUIDToString(refresh.ID),
+		UserID:    UUIDToString(refresh.UserID),
+		Token:     refresh.Token,
+		ExpiresAt: refresh.ExpiresAt.Time,
+		Revoked:   refresh.Revoked.Bool,
+	}, nil
 }

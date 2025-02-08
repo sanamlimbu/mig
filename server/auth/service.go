@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"mig"
 	"mig/repository"
+	"net/url"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -77,13 +78,13 @@ func GetHash(input string) string {
 }
 
 func (a *Auther) newAccessToken(user mig.User) (string, string, *Claims, error) {
-	userFingerprint, err := generateRandomString(32)
+	str, err := generateRandomString(32)
 	if err != nil {
 		return "", "", nil, fmt.Errorf("unable to create access token: %w", err)
 	}
 
+	userFingerprint := url.QueryEscape(str)
 	userFingerprintHash := GetHash(userFingerprint)
-
 	now := time.Now()
 
 	claims := Claims{
@@ -109,7 +110,7 @@ func (a *Auther) newAccessToken(user mig.User) (string, string, *Claims, error) 
 		return "", "", nil, fmt.Errorf("unable to create access token: %w", err)
 	}
 
-	return ss, userFingerprint, nil, nil
+	return ss, userFingerprint, &claims, nil
 }
 
 // newRefreshToken generates a base64-encoded random string of length 32 as an opaque refresh token.
@@ -141,7 +142,7 @@ func (a *Auther) verifyAccessToken(token string) (bool, *Claims, error) {
 		return a.secret, nil
 	})
 
-	if err != nil {
+	if err != nil && !errors.Is(err, jwt.ErrTokenExpired) {
 		return false, nil, fmt.Errorf("unable to parse access token: %w", err)
 	}
 
@@ -162,7 +163,7 @@ type LoginResponse struct {
 	ExpiresIn       int      `json:"expires_in"`
 	RefreshToken    string   `json:"refresh_token"`
 	User            mig.User `json:"user"`
-	UserFingerprint string
+	UserFingerprint string   `json:"-"`
 }
 
 func (s *Service) Login(ctx context.Context, username, password string) (LoginResponse, error) {
@@ -221,7 +222,7 @@ type SignupResponse struct {
 	ExpiresIn       int      `json:"expires_in"`
 	RefreshToken    string   `json:"refresh_token"`
 	User            mig.User `json:"user"`
-	UserFingerprint string
+	UserFingerprint string   `json:"-"`
 }
 
 func (s *Service) Signup(ctx context.Context, username, email, password string) (SignupResponse, error) {
@@ -299,17 +300,19 @@ type RefreshTokenResponse struct {
 	AccessToken     string   `json:"access_token"`
 	ExpiresAt       int64    `json:"expires_at"`
 	ExpiresIn       int      `json:"expires_in"`
+	RefreshToken    string   `json:"refresh_token"`
 	User            mig.User `json:"user"`
 	UserFingerprint string
 }
 
-func (s *Service) RefreshToken(ctx context.Context, accessToken, refreshToken string, fingerprint string) (RefreshTokenResponse, error) {
+func (s *Service) RefreshToken(ctx context.Context, accessToken, refreshToken, fingerprint string) (RefreshTokenResponse, error) {
 	_, claims, err := s.VerifyAccessToken(accessToken)
 	if err != nil {
 		return RefreshTokenResponse{}, err
 	}
 
 	hash := GetHash(fingerprint)
+
 	if hash != claims.UserFingerprint {
 		return RefreshTokenResponse{}, fmt.Errorf("invalid user fingerprint")
 	}
@@ -338,6 +341,7 @@ func (s *Service) RefreshToken(ctx context.Context, accessToken, refreshToken st
 		ExpiresAt:       claims.ExpiresAt.Unix(),
 		ExpiresIn:       int(claims.ExpiresAt.Unix() - claims.IssuedAt.Unix()),
 		User:            user,
+		RefreshToken:    refresh.Token,
 		UserFingerprint: userFingerprint,
 	}
 

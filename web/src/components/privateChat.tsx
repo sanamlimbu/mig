@@ -1,10 +1,14 @@
 import { getPrivateConversation } from '@/api/user';
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { User } from '@/types';
+import { WS_BASE_URL } from '@/constants';
+import { User, WebSocketMessage } from '@/types';
+import { getAuthToken } from '@/utils/auth';
 import { DotsVerticalIcon, PersonIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
+import useWebSocket from 'react-use-websocket';
+import { v4 as uuidv4 } from 'uuid';
 import SendIcon from '../assets/send.svg';
 import { Textarea } from './ui/textarea';
 
@@ -13,8 +17,16 @@ interface PrivateChatProps {
   recipient: User;
 }
 export default function PrivateChat({ user, recipient }: PrivateChatProps) {
-  const [content, setContent] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const { sendJsonMessage, lastJsonMessage } = useWebSocket<WebSocketMessage>(
+    WS_BASE_URL,
+    {
+      share: true,
+      shouldReconnect: () => !!getAuthToken(),
+    }
+  );
+
+  useEffect(() => {}, [lastJsonMessage]);
 
   const { isPending, isError, data, error } = useQuery({
     queryKey: [user.id, 'private-conversation', recipient.id],
@@ -29,16 +41,29 @@ export default function PrivateChat({ user, recipient }: PrivateChatProps) {
     },
   });
 
+  const handleSend = () => {
+    if (!inputRef.current) {
+      return;
+    }
+
+    sendJsonMessage<WebSocketMessage>({
+      type: 'message_created',
+      payload: {
+        id: uuidv4(),
+        sender_id: user.id,
+        recipient_id: recipient.id,
+        content: inputRef.current?.value,
+        message_type: 'private',
+      },
+    });
+  };
+
   if (isPending) {
     return <div>Loading</div>;
   }
 
   if (isError) {
     return <div>{error.message};</div>;
-  }
-
-  if (user === null) {
-    return <div>{'error'}</div>;
   }
 
   return (
@@ -86,15 +111,12 @@ export default function PrivateChat({ user, recipient }: PrivateChatProps) {
         </div>
       </ScrollArea>
       <div className="py-4 pl-4 pr-1 bg-gray-100 flex justify-between gap-3 items-center">
-        <Textarea
-          className="border-white bg-white"
-          onChange={(e) => setContent(e.currentTarget.value)}
-          ref={inputRef}
-        />
+        <Textarea className="border-white bg-white" ref={inputRef} />
         <img
           src={SendIcon}
           className="w-7 h-7 cursor-pointer"
           onClick={() => {
+            handleSend();
             if (inputRef.current) {
               inputRef.current.value = '';
             }

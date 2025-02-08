@@ -175,9 +175,9 @@ type WebsocketMessage struct {
 
 func (h *WsHub) HandleBrokerMessage(topic messagebroker.Topic, msg []byte) error {
 	switch topic {
-	case messagebroker.TopicMessageCreated:
+	case messagebroker.MessageCreatedTopic:
 		{
-			var payload messagebroker.TopicMessageCreatedPayload
+			var payload messagebroker.MessageCreatedTopicPayload
 			if err := json.Unmarshal(msg, &payload); err != nil {
 				return err
 			}
@@ -190,9 +190,9 @@ func (h *WsHub) HandleBrokerMessage(topic messagebroker.Topic, msg []byte) error
 				}
 			}
 		}
-	case messagebroker.TopicMessageUpdated:
+	case messagebroker.MessageUpdatedTopic:
 		{
-			var payload messagebroker.TopicMessageUpdatedPayload
+			var payload messagebroker.MessageUpdatedTopicPayload
 			if err := json.Unmarshal(msg, &payload); err != nil {
 				return err
 			}
@@ -205,9 +205,9 @@ func (h *WsHub) HandleBrokerMessage(topic messagebroker.Topic, msg []byte) error
 				}
 			}
 		}
-	case messagebroker.TopicMessageDeleted:
+	case messagebroker.MessageDeletedTopic:
 		{
-			var payload messagebroker.TopicMessageDeletedPayload
+			var payload messagebroker.MessageDeletedTopicPayload
 			if err := json.Unmarshal(msg, &payload); err != nil {
 				return err
 			}
@@ -243,8 +243,9 @@ func (c *Client) read() {
 
 loop:
 	for {
+
 		var msg WebsocketMessage
-		err := c.conn.ReadJSON(msg)
+		err := c.conn.ReadJSON(&msg)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Error().Msg(err.Error())
@@ -270,13 +271,7 @@ loop:
 			}
 		case MessageCreatedWebsocketMessageType, MessageUpdatedWebsocketMessageType, MessageDeletedWebsocketMessageType:
 			{
-				payload, err := c.getPublishableBrokerMessage(msg.Type, data)
-				if err != nil {
-					log.Error().Msg(err.Error())
-					break loop
-				}
-
-				data, err := json.Marshal(payload)
+				payload, err := c.parseBrokerMessage(msg.Type, data)
 				if err != nil {
 					log.Error().Msg(err.Error())
 					break loop
@@ -315,7 +310,7 @@ func (c *Client) write() {
 					return
 				}
 
-				if err := c.conn.WriteJSON(message); err != nil {
+				if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
 					return
 				}
 			}
@@ -360,24 +355,24 @@ func (c *Client) register(data []byte) error {
 	return nil
 }
 
-func (c *Client) getPublishableBrokerMessage(msgType WebsocketMessageType, data []byte) (messagebroker.Message, error) {
+func (c *Client) parseBrokerMessage(msgType WebsocketMessageType, data []byte) (messagebroker.Message, error) {
 	switch msgType {
 	case MessageCreatedWebsocketMessageType:
-		var payload messagebroker.TopicMessageCreatedPayload
+		var payload messagebroker.MessageCreatedTopicPayload
 		if err := json.Unmarshal(data, &payload); err != nil {
 			return nil, fmt.Errorf("unable to unmarshal message created payload: %w", err)
 		}
 		return payload, nil
 
 	case MessageUpdatedWebsocketMessageType:
-		var payload messagebroker.TopicMessageUpdatedPayload
+		var payload messagebroker.MessageUpdatedTopicPayload
 		if err := json.Unmarshal(data, &payload); err != nil {
 			return nil, fmt.Errorf("unable to unmarshal message updated payload: %w", err)
 		}
 		return payload, nil
 
 	case MessageDeletedWebsocketMessageType:
-		var payload messagebroker.TopicMessageDeletedPayload
+		var payload messagebroker.MessageDeletedTopicPayload
 		if err := json.Unmarshal(data, &payload); err != nil {
 			return nil, fmt.Errorf("unable to unmarshal message deleted payload: %w", err)
 		}
