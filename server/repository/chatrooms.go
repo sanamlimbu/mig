@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"mig"
 	"mig/db"
+
+	"github.com/guregu/null/v5"
 )
 
 type ChatroomRepository interface {
@@ -20,6 +22,8 @@ type ChatroomRepository interface {
 
 	// GetChatroomWithCreator returns chatroom with given chatroom ID including creator information.
 	GetChatroomWithCreator(ctx context.Context, chatroomID string) (mig.ChatroomWithCreator, error)
+
+	SaveChatroomMessage(ctx context.Context, arg SaveChatroomMessageParams) (mig.Message, error)
 }
 
 type ChatroomRepositoryPostgreSQL struct {
@@ -165,4 +169,54 @@ func (r *ChatroomRepositoryPostgreSQL) GetChatroomWithCreator(ctx context.Contex
 	}
 
 	return getChatroomWithCreatorFromDBModel(result), nil
+}
+
+type SaveChatroomMessageParams struct {
+	ID         string
+	SenderID   string
+	ChatroomID string
+	Content    string
+}
+
+func (r *ChatroomRepositoryPostgreSQL) SaveChatroomMessage(ctx context.Context, arg SaveChatroomMessageParams) (mig.Message, error) {
+	id, err := StringToUUID(arg.ID)
+	if err != nil {
+		return mig.Message{}, err
+
+	}
+
+	senderID, err := StringToUUID(arg.SenderID)
+	if err != nil {
+		return mig.Message{}, err
+
+	}
+
+	chatroomID, err := StringToUUID(arg.ChatroomID)
+	if err != nil {
+		return mig.Message{}, err
+
+	}
+
+	msg, err := r.queries.CreateChatroomMessage(ctx, db.CreateChatroomMessageParams{
+		ID:         id,
+		SenderID:   senderID,
+		ChatroomID: chatroomID,
+		Content:    arg.Content,
+	})
+
+	if err != nil {
+		return mig.Message{}, err
+	}
+
+	return mig.Message{
+		ID:            UUIDToString(msg.ID),
+		Content:       msg.Content,
+		WorkflowState: mig.MessageWorkflowState(msg.WorkflowState),
+		Type:          mig.MessageType(msg.MessageType),
+		SenderID:      UUIDToString(msg.SenderID),
+		RecipientID:   null.NewString(UUIDToString(msg.RecipientID), msg.RecipientID.Valid),
+		ChatroomID:    null.NewString(UUIDToString(msg.ChatroomID), msg.ChatroomID.Valid),
+		IsRead:        null.NewBool(msg.IsRead.Bool, msg.IsRead.Valid),
+		CreatedAt:     msg.CreatedAt.Time,
+	}, nil
 }

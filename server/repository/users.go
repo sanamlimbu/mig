@@ -8,6 +8,7 @@ import (
 	"mig/db"
 	"time"
 
+	"github.com/guregu/null/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -54,6 +55,8 @@ type UserRepository interface {
 	UpsertRefreshToken(ctx context.Context, arg UpsertRefreshTokenParams) (mig.RefreshToken, error)
 
 	GetRefreshToken(ctx context.Context, token string) (mig.RefreshToken, error)
+
+	SavePrivateMessage(ctx context.Context, arg SavePrivateMessageParams) (mig.Message, error)
 }
 
 type UserRepositoryPostgreSQL struct {
@@ -389,7 +392,6 @@ type UpsertRefreshTokenParams struct {
 }
 
 func (r *UserRepositoryPostgreSQL) UpsertRefreshToken(ctx context.Context, arg UpsertRefreshTokenParams) (mig.RefreshToken, error) {
-
 	uuid, err := StringToUUID(arg.UserID)
 	if err != nil {
 		return mig.RefreshToken{}, err
@@ -427,5 +429,55 @@ func (r *UserRepositoryPostgreSQL) GetRefreshToken(ctx context.Context, token st
 		Token:     refresh.Token,
 		ExpiresAt: refresh.ExpiresAt.Time,
 		Revoked:   refresh.Revoked.Bool,
+	}, nil
+}
+
+type SavePrivateMessageParams struct {
+	ID          string
+	SenderID    string
+	RecipientID string
+	Content     string
+}
+
+func (r *UserRepositoryPostgreSQL) SavePrivateMessage(ctx context.Context, arg SavePrivateMessageParams) (mig.Message, error) {
+	id, err := StringToUUID(arg.ID)
+	if err != nil {
+		return mig.Message{}, err
+
+	}
+
+	senderID, err := StringToUUID(arg.SenderID)
+	if err != nil {
+		return mig.Message{}, err
+
+	}
+
+	recipientID, err := StringToUUID(arg.RecipientID)
+	if err != nil {
+		return mig.Message{}, err
+
+	}
+
+	msg, err := r.queries.CreatePrivateMessage(ctx, db.CreatePrivateMessageParams{
+		ID:          id,
+		SenderID:    senderID,
+		RecipientID: recipientID,
+		Content:     arg.Content,
+	})
+
+	if err != nil {
+		return mig.Message{}, err
+	}
+
+	return mig.Message{
+		ID:            UUIDToString(msg.ID),
+		Content:       msg.Content,
+		WorkflowState: mig.MessageWorkflowState(msg.WorkflowState),
+		Type:          mig.MessageType(msg.MessageType),
+		SenderID:      UUIDToString(msg.SenderID),
+		RecipientID:   null.NewString(UUIDToString(msg.RecipientID), msg.RecipientID.Valid),
+		ChatroomID:    null.NewString(UUIDToString(msg.ChatroomID), msg.ChatroomID.Valid),
+		IsRead:        null.NewBool(msg.IsRead.Bool, msg.IsRead.Valid),
+		CreatedAt:     msg.CreatedAt.Time,
 	}, nil
 }

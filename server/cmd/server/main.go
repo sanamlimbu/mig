@@ -142,12 +142,12 @@ func serve(c *cli.Context) error {
 		return err
 	}
 
-	userService, err := user.NewService(userRepo)
+	chatroomRepo, err := repository.NewChatroomRepositoryPostgreSQL(queries)
 	if err != nil {
 		return err
 	}
 
-	chatroomRepo, err := repository.NewChatroomRepositoryPostgreSQL(queries)
+	userService, err := user.NewService(userRepo, chatroomRepo)
 	if err != nil {
 		return err
 	}

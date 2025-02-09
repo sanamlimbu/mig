@@ -175,7 +175,7 @@ type WebsocketMessage struct {
 
 func (h *WsHub) HandleBrokerMessage(topic messagebroker.Topic, msg []byte) error {
 	switch topic {
-	case messagebroker.MessageCreatedTopic:
+	case messagebroker.TopicMessageCreated:
 		{
 			var payload messagebroker.MessageCreatedTopicPayload
 			if err := json.Unmarshal(msg, &payload); err != nil {
@@ -190,7 +190,7 @@ func (h *WsHub) HandleBrokerMessage(topic messagebroker.Topic, msg []byte) error
 				}
 			}
 		}
-	case messagebroker.MessageUpdatedTopic:
+	case messagebroker.TopicMessageUpdated:
 		{
 			var payload messagebroker.MessageUpdatedTopicPayload
 			if err := json.Unmarshal(msg, &payload); err != nil {
@@ -205,7 +205,7 @@ func (h *WsHub) HandleBrokerMessage(topic messagebroker.Topic, msg []byte) error
 				}
 			}
 		}
-	case messagebroker.MessageDeletedTopic:
+	case messagebroker.TopicMessageDeleted:
 		{
 			var payload messagebroker.MessageDeletedTopicPayload
 			if err := json.Unmarshal(msg, &payload); err != nil {
@@ -275,6 +275,14 @@ loop:
 				if err != nil {
 					log.Error().Msg(err.Error())
 					break loop
+				}
+
+				if msg.Type == MessageCreatedWebsocketMessageType {
+
+				} else if msg.Type == MessageUpdatedWebsocketMessageType {
+
+				} else if msg.Type == MessageDeletedWebsocketMessageType {
+
 				}
 
 				err = c.hub.broker.Publish(payload.GetTopic(), data)

@@ -39,16 +39,14 @@ func (s *SeederPostgreSQL) Messages(ctx context.Context, userUUIDs, chatroomUUID
 
 			msgArgs := []db.CreateChatroomMessageParams{
 				{
-					SenderID:      senderID,
-					ChatroomID:    chatroomID,
-					Content:       s.faker.Paragraph(1, 2, 10, ","),
-					WorkflowState: db.MessageWorkflowStateCreated,
+					SenderID:   senderID,
+					ChatroomID: chatroomID,
+					Content:    s.faker.Paragraph(1, 2, 10, ","),
 				},
 				{
-					SenderID:      senderID,
-					ChatroomID:    chatroomID,
-					Content:       s.faker.Paragraph(1, 2, 10, ","),
-					WorkflowState: db.MessageWorkflowStateCreated,
+					SenderID:   senderID,
+					ChatroomID: chatroomID,
+					Content:    s.faker.Paragraph(1, 2, 10, ","),
 				},
 			}
 
@@ -74,10 +72,9 @@ func (s *SeederPostgreSQL) Messages(ctx context.Context, userUUIDs, chatroomUUID
 			}
 
 			msgArg := db.CreatePrivateMessageParams{
-				SenderID:      senderID,
-				RecipientID:   recipientID,
-				Content:       s.faker.Paragraph(1, 2, 10, ","),
-				WorkflowState: db.MessageWorkflowStateCreated,
+				SenderID:    senderID,
+				RecipientID: recipientID,
+				Content:     s.faker.Paragraph(1, 2, 10, ","),
 			}
 
 			_, err = qtx.CreatePrivateMessage(ctx, msgArg)
@@ -100,10 +97,9 @@ func (s *SeederPostgreSQL) Messages(ctx context.Context, userUUIDs, chatroomUUID
 			}
 
 			msgArg := db.CreatePrivateMessageParams{
-				SenderID:      senderID,
-				RecipientID:   recipientID,
-				Content:       s.faker.Paragraph(1, 2, 10, ","),
-				WorkflowState: db.MessageWorkflowStateCreated,
+				SenderID:    senderID,
+				RecipientID: recipientID,
+				Content:     s.faker.Paragraph(1, 2, 10, ","),
 			}
 
 			_, err = qtx.CreatePrivateMessage(ctx, msgArg)

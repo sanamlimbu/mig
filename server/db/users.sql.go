@@ -13,26 +13,26 @@ import (
 
 const createPrivateMessage = `-- name: CreatePrivateMessage :one
 INSERT INTO messages (
-  sender_id, recipient_id, content, workflow_state, message_type
+ id, sender_id, recipient_id, content, workflow_state, message_type
 ) VALUES (
-  $1, $2, $3, $4, 'private'
+  $1, $2, $3, $4, 'created', 'private'
 )
 RETURNING id, sender_id, recipient_id, chatroom_id, workflow_state, message_type, content, is_read, created_at, updated_at, deleted_at
 `
 
 type CreatePrivateMessageParams struct {
-	SenderID      pgtype.UUID
-	RecipientID   pgtype.UUID
-	Content       string
-	WorkflowState MessageWorkflowState
+	ID          pgtype.UUID
+	SenderID    pgtype.UUID
+	RecipientID pgtype.UUID
+	Content     string
 }
 
 func (q *Queries) CreatePrivateMessage(ctx context.Context, arg CreatePrivateMessageParams) (Message, error) {
 	row := q.db.QueryRow(ctx, createPrivateMessage,
+		arg.ID,
 		arg.SenderID,
 		arg.RecipientID,
 		arg.Content,
-		arg.WorkflowState,
 	)
 	var i Message
 	err := row.Scan(

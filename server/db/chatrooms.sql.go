@@ -52,26 +52,26 @@ func (q *Queries) CreateChatroom(ctx context.Context, arg CreateChatroomParams) 
 
 const createChatroomMessage = `-- name: CreateChatroomMessage :one
 INSERT INTO messages (
-  sender_id, chatroom_id, content, workflow_state, message_type
+ id, sender_id, chatroom_id, content, workflow_state, message_type
 ) VALUES (
-  $1, $2, $3, $4, 'chatroom'
+  $1, $2, $3, $4, 'created', 'chatroom'
 )
 RETURNING id, sender_id, recipient_id, chatroom_id, workflow_state, message_type, content, is_read, created_at, updated_at, deleted_at
 `
 
 type CreateChatroomMessageParams struct {
-	SenderID      pgtype.UUID
-	ChatroomID    pgtype.UUID
-	Content       string
-	WorkflowState MessageWorkflowState
+	ID         pgtype.UUID
+	SenderID   pgtype.UUID
+	ChatroomID pgtype.UUID
+	Content    string
 }
 
 func (q *Queries) CreateChatroomMessage(ctx context.Context, arg CreateChatroomMessageParams) (Message, error) {
 	row := q.db.QueryRow(ctx, createChatroomMessage,
+		arg.ID,
 		arg.SenderID,
 		arg.ChatroomID,
 		arg.Content,
-		arg.WorkflowState,
 	)
 	var i Message
 	err := row.Scan(

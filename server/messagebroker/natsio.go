@@ -17,16 +17,16 @@ type MessageBroker interface {
 type Topic string
 
 const (
-	MessageCreatedTopic Topic = "message.created"
-	MessageDeletedTopic Topic = "message.deleted"
-	MessageUpdatedTopic Topic = "message.updated"
+	TopicMessageCreated Topic = "message.created"
+	TopicMessageDeleted Topic = "message.deleted"
+	TopicMessageUpdated Topic = "message.updated"
 )
 
 func GetAllTopics() []Topic {
 	return []Topic{
-		MessageCreatedTopic,
-		MessageUpdatedTopic,
-		MessageDeletedTopic,
+		TopicMessageCreated,
+		TopicMessageUpdated,
+		TopicMessageDeleted,
 	}
 }
 
@@ -43,7 +43,7 @@ type MessageCreatedTopicPayload struct {
 }
 
 func (m MessageCreatedTopicPayload) GetTopic() Topic {
-	return MessageCreatedTopic
+	return TopicMessageCreated
 }
 
 type MessageUpdatedTopicPayload struct {
@@ -55,7 +55,7 @@ type MessageUpdatedTopicPayload struct {
 }
 
 func (m MessageUpdatedTopicPayload) GetTopic() Topic {
-	return MessageUpdatedTopic
+	return TopicMessageUpdated
 }
 
 type MessageDeletedTopicPayload struct {
@@ -67,7 +67,7 @@ type MessageDeletedTopicPayload struct {
 }
 
 func (m MessageDeletedTopicPayload) GetTopic() Topic {
-	return MessageDeletedTopic
+	return TopicMessageDeleted
 }
 
 type IncommingMessageHandler interface {

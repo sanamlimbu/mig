@@ -22,6 +22,18 @@ const (
 	MessageWorkflowStateRead    MessageWorkflowState = "read"
 )
 
+type Message struct {
+	ID            string               `json:"id"`
+	Content       string               `json:"content"`
+	WorkflowState MessageWorkflowState `json:"workflow_state"`
+	Type          MessageType          `json:"type"`
+	SenderID      string               `json:"sender_id"`
+	RecipientID   null.String          `json:"recipient_id"`
+	ChatroomID    null.String          `json:"chatroom_id"`
+	IsRead        null.Bool            `json:"is_read"`
+	CreatedAt     time.Time            `json:"created_at"`
+}
+
 type ChatroomMessage struct {
 	ID                    string                `json:"id"`
 	Content               string                `json:"content"`
