@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"mig"
 	"mig/repository"
+
+	"github.com/guregu/null/v5"
 )
 
 type Service struct {
@@ -74,7 +76,7 @@ func (s *Service) GetFriendsByFriendshipWorkflowStates(ctx context.Context, user
 
 // GetPrivateConversation returns messages communicated between two given users.
 // Result is paginated.
-func (s *Service) GetPrivateConversation(ctx context.Context, firstUserID, secondUserID string, pagination mig.Pagination) ([]mig.PrivateMessage, error) {
+func (s *Service) GetPrivateConversation(ctx context.Context, firstUserID, secondUserID string, pagination mig.Pagination) ([]mig.Message, error) {
 	_, err := s.userRepo.GetUser(ctx, firstUserID)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return nil, mig.NewError(fmt.Sprintf("not found user of id %s", firstUserID), err, mig.NotFoundError)
@@ -117,7 +119,7 @@ func (s *Service) GetUser(ctx context.Context, userID string) (mig.User, error) 
 
 // GetPrivateMessages returns private messages of given users.
 // Result is paginated.
-func (s *Service) GetPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.PrivateMessage, error) {
+func (s *Service) GetPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.Message, error) {
 	_, err := s.userRepo.GetUser(ctx, userID)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return nil, mig.NewError(fmt.Sprintf("not found user of id %s", userID), err, mig.NotFoundError)
@@ -139,7 +141,6 @@ type SaveMessageParams struct {
 	ID          string
 	SenderID    string
 	RecipientID string
-	ChatroomID  string
 	Content     string
 	Type        mig.MessageType
 }
@@ -159,14 +160,14 @@ func (s *Service) SaveMessage(ctx context.Context, arg SaveMessageParams) error 
 		_, err := s.SaveChatroomMessage(ctx, SaveChatroomMessageParams{
 			ID:         arg.ID,
 			SenderID:   arg.SenderID,
-			ChatroomID: arg.ChatroomID,
+			ChatroomID: arg.RecipientID,
 			Content:    arg.Content,
 		})
 
 		return err
 	}
 
-	return fmt.Errorf("iinvalid message type %s", arg.Type)
+	return fmt.Errorf("invalid message type %s", arg.Type)
 }
 
 type SavePrivateMessageParams struct {
@@ -176,23 +177,23 @@ type SavePrivateMessageParams struct {
 	Content     string
 }
 
-func (s *Service) SavePrivateMessage(ctx context.Context, arg SavePrivateMessageParams) (mig.PrivateMessage, error) {
+func (s *Service) SavePrivateMessage(ctx context.Context, arg SavePrivateMessageParams) (mig.Message, error) {
 	sender, err := s.userRepo.GetUser(ctx, arg.SenderID)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return mig.PrivateMessage{}, mig.NewError(fmt.Sprintf("not found user of id %s", arg.SenderID), err, mig.NotFoundError)
+		return mig.Message{}, mig.NewError(fmt.Sprintf("not found user of id %s", arg.SenderID), err, mig.NotFoundError)
 	}
 
 	if err != nil {
-		return mig.PrivateMessage{}, mig.NewError(fmt.Sprintf("unable to fetch user of id %s", arg.SenderID), err, mig.InternalServerError)
+		return mig.Message{}, mig.NewError(fmt.Sprintf("unable to fetch user of id %s", arg.SenderID), err, mig.InternalServerError)
 	}
 
 	recipient, err := s.userRepo.GetUser(ctx, arg.RecipientID)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return mig.PrivateMessage{}, mig.NewError(fmt.Sprintf("not found user of id %s", arg.RecipientID), err, mig.NotFoundError)
+		return mig.Message{}, mig.NewError(fmt.Sprintf("not found user of id %s", arg.RecipientID), err, mig.NotFoundError)
 	}
 
 	if err != nil {
-		return mig.PrivateMessage{}, mig.NewError(fmt.Sprintf("unable to fetch user of id %s", arg.RecipientID), err, mig.InternalServerError)
+		return mig.Message{}, mig.NewError(fmt.Sprintf("unable to fetch user of id %s", arg.RecipientID), err, mig.InternalServerError)
 	}
 
 	msg, err := s.userRepo.SavePrivateMessage(ctx, repository.SavePrivateMessageParams{
@@ -203,23 +204,29 @@ func (s *Service) SavePrivateMessage(ctx context.Context, arg SavePrivateMessage
 	})
 
 	if err != nil {
-		return mig.PrivateMessage{}, mig.NewError("unable to save private message", err, mig.InternalServerError)
+		return mig.Message{}, mig.NewError("unable to save private message", err, mig.InternalServerError)
 	}
 
-	return mig.PrivateMessage{
-		ID:                     msg.ID,
-		Content:                msg.Content,
-		WorkflowState:          msg.WorkflowState,
-		Type:                   msg.Type,
-		CreatedAt:              msg.CreatedAt,
-		SenderID:               msg.SenderID,
-		SenderUsername:         sender.Username,
-		SenderEmail:            sender.Email,
-		SenderWorkflowState:    sender.WorkflowState,
-		RecipientID:            msg.RecipientID.String,
-		RecipientUsername:      recipient.Username,
-		RecipientEmail:         recipient.Email,
-		RecipientWorkflowState: recipient.WorkflowState,
+	return mig.Message{
+		ID:            msg.ID,
+		Content:       msg.Content,
+		WorkflowState: msg.WorkflowState,
+		Type:          msg.Type,
+		CreatedAt:     msg.CreatedAt,
+		SenderID:      msg.SenderID,
+		RecipientID:   msg.RecipientID,
+		Sender: &mig.User{
+			ID:            sender.ID,
+			Email:         sender.Email,
+			Username:      sender.Username,
+			WorkflowState: sender.WorkflowState,
+		},
+		Recipient: &mig.User{
+			ID:            recipient.ID,
+			Email:         recipient.Email,
+			Username:      recipient.Username,
+			WorkflowState: recipient.WorkflowState,
+		},
 	}, nil
 }
 
@@ -230,23 +237,23 @@ type SaveChatroomMessageParams struct {
 	Content    string
 }
 
-func (s *Service) SaveChatroomMessage(ctx context.Context, arg SaveChatroomMessageParams) (mig.ChatroomMessage, error) {
+func (s *Service) SaveChatroomMessage(ctx context.Context, arg SaveChatroomMessageParams) (mig.Message, error) {
 	sender, err := s.userRepo.GetUser(ctx, arg.SenderID)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return mig.ChatroomMessage{}, mig.NewError(fmt.Sprintf("not found user of id %s", arg.SenderID), err, mig.NotFoundError)
+		return mig.Message{}, mig.NewError(fmt.Sprintf("not found user of id %s", arg.SenderID), err, mig.NotFoundError)
 	}
 
 	if err != nil {
-		return mig.ChatroomMessage{}, mig.NewError(fmt.Sprintf("unable to fetch user of id %s", arg.SenderID), err, mig.InternalServerError)
+		return mig.Message{}, mig.NewError(fmt.Sprintf("unable to fetch user of id %s", arg.SenderID), err, mig.InternalServerError)
 	}
 
-	chatroom, err := s.chatroomRepo.GetChatroom(ctx, arg.ChatroomID)
+	chatroom, err := s.chatroomRepo.GetChatroom(ctx, arg.ChatroomID, false)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return mig.ChatroomMessage{}, mig.NewError(fmt.Sprintf("not found chatroom of id %s", arg.ChatroomID), err, mig.NotFoundError)
+		return mig.Message{}, mig.NewError(fmt.Sprintf("not found chatroom of id %s", arg.ChatroomID), err, mig.NotFoundError)
 	}
 
 	if err != nil {
-		return mig.ChatroomMessage{}, mig.NewError(fmt.Sprintf("unable to fetch chatroom of id %s", arg.ChatroomID), err, mig.InternalServerError)
+		return mig.Message{}, mig.NewError(fmt.Sprintf("unable to fetch chatroom of id %s", arg.ChatroomID), err, mig.InternalServerError)
 	}
 
 	msg, err := s.chatroomRepo.SaveChatroomMessage(ctx, repository.SaveChatroomMessageParams{
@@ -257,22 +264,61 @@ func (s *Service) SaveChatroomMessage(ctx context.Context, arg SaveChatroomMessa
 	})
 
 	if err != nil {
-		return mig.ChatroomMessage{}, mig.NewError("unable to save chatroom message", err, mig.InternalServerError)
+		return mig.Message{}, mig.NewError("unable to save chatroom message", err, mig.InternalServerError)
 	}
 
-	return mig.ChatroomMessage{
-		ID:                    msg.ID,
-		Content:               msg.Content,
-		WorkflowState:         msg.WorkflowState,
-		Type:                  msg.Type,
-		CreatedAt:             msg.CreatedAt,
-		SenderID:              msg.SenderID,
-		ChatroomID:            msg.ChatroomID.String,
-		ChatroomCreatorID:     chatroom.CreatedBy,
-		SenderEmail:           sender.Email,
-		SenderUsername:        sender.Username,
-		SenderWorkflowState:   sender.WorkflowState,
-		ChatroomName:          chatroom.Name,
-		ChatroomWorkflowState: chatroom.WorkflowState,
+	return mig.Message{
+		ID:            msg.ID,
+		Content:       msg.Content,
+		WorkflowState: msg.WorkflowState,
+		Type:          msg.Type,
+		CreatedAt:     msg.CreatedAt,
+		SenderID:      msg.SenderID,
+		ChatroomID:    msg.ChatroomID,
+		Sender: &mig.User{
+			ID:            sender.ID,
+			Email:         sender.Email,
+			Username:      sender.Username,
+			WorkflowState: sender.WorkflowState,
+		},
+		Chatroom: &mig.Chatroom{
+			ID:            chatroom.ID,
+			Name:          chatroom.Name,
+			Type:          chatroom.Type,
+			WorkflowState: chatroom.WorkflowState,
+			CreatedBy:     chatroom.CreatedBy,
+		},
 	}, nil
+}
+
+type UpdateMessageParams struct {
+	ID            string
+	Content       string
+	WorkflowState mig.MessageWorkflowState
+	IsRead        null.Bool
+}
+
+func (s *Service) UpdateMessage(ctx context.Context, arg UpdateMessageParams) (mig.Message, error) {
+	msg, err := s.userRepo.UpdateMessage(ctx, repository.UpdateMessageParams{
+		ID:           arg.ID,
+		Content:      arg.Content,
+		WorflowState: arg.WorkflowState,
+		IsRead:       arg.IsRead,
+	})
+
+	if err != nil {
+		return mig.Message{}, mig.NewError("unable to update message", err, mig.InternalServerError)
+	}
+
+	return msg, nil
+}
+
+func (s *Service) DeleteMessage(ctx context.Context, id string) error {
+	err := s.userRepo.DeleteMessage(ctx, id)
+
+	if err != nil {
+		return mig.NewError("unable to delete message", err, mig.InternalServerError)
+	}
+
+	return nil
 }

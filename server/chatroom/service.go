@@ -26,14 +26,14 @@ func NewService(chatroomRepo repository.ChatroomRepository) (*Service, error) {
 }
 
 // GetChatroomWithCreator returns chatroom for given chatroom ID.
-func (s *Service) GetChatroomWithCreator(ctx context.Context, chatroomID string) (mig.ChatroomWithCreator, error) {
-	result, err := s.chatroomRepo.GetChatroomWithCreator(ctx, chatroomID)
+func (s *Service) GetChatroomWithCreator(ctx context.Context, chatroomID string) (mig.Chatroom, error) {
+	result, err := s.chatroomRepo.GetChatroom(ctx, chatroomID, true)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return mig.ChatroomWithCreator{}, mig.NewError(fmt.Sprintf("not found chatroom of id %s", chatroomID), err, mig.NotFoundError)
+		return mig.Chatroom{}, mig.NewError(fmt.Sprintf("not found chatroom of id %s", chatroomID), err, mig.NotFoundError)
 	}
 
 	if err != nil {
-		return mig.ChatroomWithCreator{}, mig.NewError(fmt.Sprintf("unable to fetch chatroom of id %s", chatroomID), err, mig.InternalServerError)
+		return mig.Chatroom{}, mig.NewError(fmt.Sprintf("unable to fetch chatroom of id %s", chatroomID), err, mig.InternalServerError)
 	}
 
 	return result, nil
@@ -52,8 +52,8 @@ func (s *Service) GetChatroomsBySearchTermAndWorkflowStates(ctx context.Context,
 
 // GetMessages returns messages sent in given chatroom.
 // Returned messages are paginated.
-func (s *Service) GetMessages(ctx context.Context, chatroomID string, pagination mig.Pagination) ([]mig.ChatroomMessage, error) {
-	_, err := s.chatroomRepo.GetChatroom(ctx, chatroomID)
+func (s *Service) GetMessages(ctx context.Context, chatroomID string, pagination mig.Pagination) ([]mig.Message, error) {
+	_, err := s.chatroomRepo.GetChatroom(ctx, chatroomID, false)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return nil, mig.NewError(fmt.Sprintf("not found chatroom of id %s", chatroomID), err, mig.NotFoundError)
 	}

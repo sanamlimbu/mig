@@ -91,6 +91,38 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const deleteMessage = `-- name: DeleteMessage :one
+UPDATE messages
+SET 
+  deleted_at = $1
+WHERE id = $2
+RETURNING id, sender_id, recipient_id, chatroom_id, workflow_state, message_type, content, is_read, created_at, updated_at, deleted_at
+`
+
+type DeleteMessageParams struct {
+	DeletedAt pgtype.Timestamptz
+	ID        pgtype.UUID
+}
+
+func (q *Queries) DeleteMessage(ctx context.Context, arg DeleteMessageParams) (Message, error) {
+	row := q.db.QueryRow(ctx, deleteMessage, arg.DeletedAt, arg.ID)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.SenderID,
+		&i.RecipientID,
+		&i.ChatroomID,
+		&i.WorkflowState,
+		&i.MessageType,
+		&i.Content,
+		&i.IsRead,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const getFriend = `-- name: GetFriend :one
 SELECT u.id, u.email, u.username, u.password, u.workflow_state, u.reset_password_url, u.created_at, u.updated_at, u.deleted_at
 FROM (
@@ -466,6 +498,47 @@ func (q *Queries) GetUserPassword(ctx context.Context, id pgtype.UUID) (string, 
 	var password string
 	err := row.Scan(&password)
 	return password, err
+}
+
+const updateMessage = `-- name: UpdateMessage :one
+UPDATE messages
+SET 
+  content = $1,
+  workflow_state = $2,
+  is_read = $3
+WHERE id = $4
+RETURNING id, sender_id, recipient_id, chatroom_id, workflow_state, message_type, content, is_read, created_at, updated_at, deleted_at
+`
+
+type UpdateMessageParams struct {
+	Content       string
+	WorkflowState MessageWorkflowState
+	IsRead        pgtype.Bool
+	ID            pgtype.UUID
+}
+
+func (q *Queries) UpdateMessage(ctx context.Context, arg UpdateMessageParams) (Message, error) {
+	row := q.db.QueryRow(ctx, updateMessage,
+		arg.Content,
+		arg.WorkflowState,
+		arg.IsRead,
+		arg.ID,
+	)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.SenderID,
+		&i.RecipientID,
+		&i.ChatroomID,
+		&i.WorkflowState,
+		&i.MessageType,
+		&i.Content,
+		&i.IsRead,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
 
 const upsertFriendship = `-- name: UpsertFriendship :one

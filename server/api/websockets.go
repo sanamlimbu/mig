@@ -162,10 +162,10 @@ func (h *WsHub) serveWebSockets(w http.ResponseWriter, r *http.Request) {
 type WebsocketMessageType string
 
 const (
-	MessageCreatedWebsocketMessageType WebsocketMessageType = "message_created"
-	MessageUpdatedWebsocketMessageType WebsocketMessageType = "message_updated"
-	MessageDeletedWebsocketMessageType WebsocketMessageType = "message_deleted"
-	AuthenticationWebsocketMessageType WebsocketMessageType = "authentication"
+	WebsocketMessageTypeMessageCreated WebsocketMessageType = "message_created"
+	WebsocketMessageTypeMessageUpdated WebsocketMessageType = "message_updated"
+	WebsocketMessageTypeMessageDeleted WebsocketMessageType = "message_deleted"
+	WebsocketMessageTypeAuthentication WebsocketMessageType = "authentication"
 )
 
 type WebsocketMessage struct {
@@ -243,7 +243,6 @@ func (c *Client) read() {
 
 loop:
 	for {
-
 		var msg WebsocketMessage
 		err := c.conn.ReadJSON(&msg)
 		if err != nil {
@@ -260,7 +259,7 @@ loop:
 		}
 
 		switch msg.Type {
-		case AuthenticationWebsocketMessageType:
+		case WebsocketMessageTypeAuthentication:
 			{
 				if c.user == nil {
 					if err := c.register(data); err != nil {
@@ -269,7 +268,7 @@ loop:
 					}
 				}
 			}
-		case MessageCreatedWebsocketMessageType, MessageUpdatedWebsocketMessageType, MessageDeletedWebsocketMessageType:
+		case WebsocketMessageTypeMessageCreated, WebsocketMessageTypeMessageUpdated, WebsocketMessageTypeMessageDeleted:
 			{
 				payload, err := c.parseBrokerMessage(msg.Type, data)
 				if err != nil {
@@ -277,12 +276,49 @@ loop:
 					break loop
 				}
 
-				if msg.Type == MessageCreatedWebsocketMessageType {
+				if msg.Type == WebsocketMessageTypeMessageCreated {
+					if payload, ok := payload.(messagebroker.MessageCreatedTopicPayload); ok {
+						if err := c.hub.userService.SaveMessage(context.Background(), user.SaveMessageParams{
+							ID:          payload.ID,
+							SenderID:    payload.SenderID,
+							RecipientID: payload.RecipientID,
+							Content:     payload.Content,
+							Type:        payload.Type,
+						}); err != nil {
+							log.Error().Msg(err.Error())
+							break loop
+						}
+					} else {
+						log.Error().Msg("unexpected payload type for message.created topic")
+						break loop
+					}
 
-				} else if msg.Type == MessageUpdatedWebsocketMessageType {
+				} else if msg.Type == WebsocketMessageTypeMessageUpdated {
+					if payload, ok := payload.(messagebroker.MessageUpdatedTopicPayload); ok {
+						_, err := c.hub.userService.UpdateMessage(context.Background(), user.UpdateMessageParams{
+							Content:       payload.Content,
+							WorkflowState: payload.WorflowState,
+							IsRead:        payload.IsRead,
+						})
+						if err != nil {
+							log.Error().Msg(err.Error())
+							break loop
+						}
+					} else {
+						log.Error().Msg("unexpected payload type for message.updated topic")
+						break loop
+					}
 
-				} else if msg.Type == MessageDeletedWebsocketMessageType {
-
+				} else if msg.Type == WebsocketMessageTypeMessageDeleted {
+					if payload, ok := payload.(messagebroker.MessageDeletedTopicPayload); ok {
+						if err := c.hub.userService.DeleteMessage(context.Background(), payload.ID); err != nil {
+							log.Error().Msg(err.Error())
+							break loop
+						}
+					} else {
+						log.Error().Msg("unexpected payload type for message.deleted topic")
+						break loop
+					}
 				}
 
 				err = c.hub.broker.Publish(payload.GetTopic(), data)
@@ -365,21 +401,21 @@ func (c *Client) register(data []byte) error {
 
 func (c *Client) parseBrokerMessage(msgType WebsocketMessageType, data []byte) (messagebroker.Message, error) {
 	switch msgType {
-	case MessageCreatedWebsocketMessageType:
+	case WebsocketMessageTypeMessageCreated:
 		var payload messagebroker.MessageCreatedTopicPayload
 		if err := json.Unmarshal(data, &payload); err != nil {
 			return nil, fmt.Errorf("unable to unmarshal message created payload: %w", err)
 		}
 		return payload, nil
 
-	case MessageUpdatedWebsocketMessageType:
+	case WebsocketMessageTypeMessageUpdated:
 		var payload messagebroker.MessageUpdatedTopicPayload
 		if err := json.Unmarshal(data, &payload); err != nil {
 			return nil, fmt.Errorf("unable to unmarshal message updated payload: %w", err)
 		}
 		return payload, nil
 
-	case MessageDeletedWebsocketMessageType:
+	case WebsocketMessageTypeMessageDeleted:
 		var payload messagebroker.MessageDeletedTopicPayload
 		if err := json.Unmarshal(data, &payload); err != nil {
 			return nil, fmt.Errorf("unable to unmarshal message deleted payload: %w", err)

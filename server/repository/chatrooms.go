@@ -15,13 +15,10 @@ type ChatroomRepository interface {
 	GetChatroomsBySearchTermAndWorkflowStates(ctx context.Context, searchTerm string, chatroomWorkflowStates []string, pagination mig.Pagination) ([]mig.Chatroom, error)
 
 	// GetMessages returns paginated messages for given chatroom.
-	GetMessages(ctx context.Context, chatroomID string, pagination mig.Pagination) ([]mig.ChatroomMessage, error)
+	GetMessages(ctx context.Context, chatroomID string, pagination mig.Pagination) ([]mig.Message, error)
 
 	// GetChatroom returns chatroom with given chatroom ID.
-	GetChatroom(ctx context.Context, chatroomID string) (mig.Chatroom, error)
-
-	// GetChatroomWithCreator returns chatroom with given chatroom ID including creator information.
-	GetChatroomWithCreator(ctx context.Context, chatroomID string) (mig.ChatroomWithCreator, error)
+	GetChatroom(ctx context.Context, chatroomID string, includeCreator bool) (mig.Chatroom, error)
 
 	SaveChatroomMessage(ctx context.Context, arg SaveChatroomMessageParams) (mig.Message, error)
 }
@@ -52,16 +49,21 @@ func getChatroomFromDBModel(chatroom db.Chatroom) mig.Chatroom {
 	}
 }
 
-func getChatroomWithCreatorFromDBModel(chatroom db.GetChatroomWithCreatorRow) mig.ChatroomWithCreator {
-	return mig.ChatroomWithCreator{
-		ID:                   UUIDToString(chatroom.ID),
-		Name:                 chatroom.Name,
-		WorkflowState:        mig.ChatroomWorkflowState(chatroom.WorkflowState),
-		Type:                 mig.ChatroomType(chatroom.Type),
-		CreatedBy:            UUIDToString(chatroom.CreatedBy),
-		CreatorUsername:      chatroom.CreatorUsername,
-		CreatorEmail:         chatroom.CreatorEmail,
-		CreatorWorkflowState: mig.UserWorkflowState(chatroom.CreatorWorkflowState),
+func getChatroomWithCreatorFromDBModel(chatroom db.GetChatroomWithCreatorRow) mig.Chatroom {
+	creatorID := UUIDToString(chatroom.CreatedBy)
+
+	return mig.Chatroom{
+		ID:            UUIDToString(chatroom.ID),
+		Name:          chatroom.Name,
+		WorkflowState: mig.ChatroomWorkflowState(chatroom.WorkflowState),
+		Type:          mig.ChatroomType(chatroom.Type),
+		CreatedBy:     creatorID,
+		Creator: &mig.User{
+			ID:            creatorID,
+			Email:         chatroom.CreatorEmail,
+			Username:      chatroom.CreatorUsername,
+			WorkflowState: mig.UserWorkflowState(chatroom.CreatorWorkflowState),
+		},
 	}
 }
 
@@ -85,26 +87,36 @@ func getChatroomsFromDBModel(chatrooms []db.Chatroom) []mig.Chatroom {
 	return result
 }
 
-func getChatroomMessageFromDBModel(msg db.GetChatroomMessagesRow) mig.ChatroomMessage {
-	return mig.ChatroomMessage{
-		ID:                    UUIDToString(msg.ID),
-		Content:               msg.Content,
-		WorkflowState:         mig.MessageWorkflowState(msg.WorkflowState),
-		Type:                  mig.MessageTypeChatroom,
-		CreatedAt:             msg.CreatedAt.Time,
-		SenderID:              UUIDToString(msg.SenderID),
-		ChatroomID:            UUIDToString(msg.ChatroomID),
-		ChatroomCreatorID:     UUIDToString(msg.ChatroomCreatorID),
-		SenderEmail:           msg.SenderEmail,
-		SenderUsername:        msg.SenderUsername,
-		SenderWorkflowState:   mig.UserWorkflowState(msg.SenderWorkflowState),
-		ChatroomName:          msg.ChatroomName,
-		ChatroomWorkflowState: mig.ChatroomWorkflowState(msg.ChatroomWorkflowState),
+func getChatroomMessageFromDBModel(msg db.GetChatroomMessagesRow) mig.Message {
+	senderID := UUIDToString(msg.SenderID)
+	chatroomID := null.NewString(UUIDToString(msg.ChatroomID), msg.ChatroomID.Valid)
+
+	return mig.Message{
+		ID:            UUIDToString(msg.ID),
+		Content:       msg.Content,
+		WorkflowState: mig.MessageWorkflowState(msg.WorkflowState),
+		Type:          mig.MessageTypeChatroom,
+		CreatedAt:     msg.CreatedAt.Time,
+		SenderID:      senderID,
+		ChatroomID:    chatroomID,
+		Sender: &mig.User{
+			ID:            senderID,
+			Email:         msg.SenderEmail,
+			Username:      msg.SenderUsername,
+			WorkflowState: mig.UserWorkflowState(msg.SenderWorkflowState),
+		},
+		Chatroom: &mig.Chatroom{
+			ID:            chatroomID.String,
+			Name:          msg.ChatroomName,
+			WorkflowState: mig.ChatroomWorkflowState(msg.ChatroomWorkflowState),
+			Type:          mig.ChatroomType(msg.ChatroomType),
+			CreatedBy:     UUIDToString(msg.ChatroomCreatorID),
+		},
 	}
 }
 
-func getChatroomMessagesFromDBModel(msgs []db.GetChatroomMessagesRow) []mig.ChatroomMessage {
-	result := make([]mig.ChatroomMessage, len(msgs))
+func getChatroomMessagesFromDBModel(msgs []db.GetChatroomMessagesRow) []mig.Message {
+	result := make([]mig.Message, len(msgs))
 
 	for i, msg := range msgs {
 		result[i] = getChatroomMessageFromDBModel(msg)
@@ -129,7 +141,7 @@ func (r *ChatroomRepositoryPostgreSQL) GetChatroomsBySearchTermAndWorkflowStates
 	return getChatroomsFromDBModel(result), nil
 }
 
-func (r *ChatroomRepositoryPostgreSQL) GetMessages(ctx context.Context, chatroomID string, pagination mig.Pagination) ([]mig.ChatroomMessage, error) {
+func (r *ChatroomRepositoryPostgreSQL) GetMessages(ctx context.Context, chatroomID string, pagination mig.Pagination) ([]mig.Message, error) {
 	chatroomUUID, err := StringToUUID(chatroomID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid uuid %s", chatroomID)
@@ -143,10 +155,19 @@ func (r *ChatroomRepositoryPostgreSQL) GetMessages(ctx context.Context, chatroom
 	return getChatroomMessagesFromDBModel(result), nil
 }
 
-func (r *ChatroomRepositoryPostgreSQL) GetChatroom(ctx context.Context, chatroomID string) (mig.Chatroom, error) {
+func (r *ChatroomRepositoryPostgreSQL) GetChatroom(ctx context.Context, chatroomID string, includeCreator bool) (mig.Chatroom, error) {
 	chatroomUUID, err := StringToUUID(chatroomID)
 	if err != nil {
 		return mig.Chatroom{}, fmt.Errorf("invalid uuid %s", chatroomID)
+	}
+
+	if includeCreator {
+		result, err := r.queries.GetChatroomWithCreator(ctx, chatroomUUID)
+		if err != nil {
+			return mig.Chatroom{}, err
+		}
+
+		return getChatroomWithCreatorFromDBModel(result), nil
 	}
 
 	result, err := r.queries.GetChatroom(ctx, chatroomUUID)
@@ -155,20 +176,6 @@ func (r *ChatroomRepositoryPostgreSQL) GetChatroom(ctx context.Context, chatroom
 	}
 
 	return getChatroomFromDBModel(result), nil
-}
-
-func (r *ChatroomRepositoryPostgreSQL) GetChatroomWithCreator(ctx context.Context, chatroomID string) (mig.ChatroomWithCreator, error) {
-	chatroomUUID, err := StringToUUID(chatroomID)
-	if err != nil {
-		return mig.ChatroomWithCreator{}, fmt.Errorf("invalid uuid %s", chatroomID)
-	}
-
-	result, err := r.queries.GetChatroomWithCreator(ctx, chatroomUUID)
-	if err != nil {
-		return mig.ChatroomWithCreator{}, err
-	}
-
-	return getChatroomWithCreatorFromDBModel(result), nil
 }
 
 type SaveChatroomMessageParams struct {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"mig"
 
+	"github.com/guregu/null/v5"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 )
@@ -39,7 +40,7 @@ type MessageCreatedTopicPayload struct {
 	SenderID    string          `json:"sender_id"`
 	RecipientID string          `json:"recipient_id"`
 	Content     string          `json:"content"`
-	MessageType mig.MessageType `json:"message_type"`
+	Type        mig.MessageType `json:"type"`
 }
 
 func (m MessageCreatedTopicPayload) GetTopic() Topic {
@@ -47,11 +48,12 @@ func (m MessageCreatedTopicPayload) GetTopic() Topic {
 }
 
 type MessageUpdatedTopicPayload struct {
-	ID          string          `json:"id"`
-	SenderID    string          `json:"sender_id"`
-	RecipientID string          `json:"recipient_id"`
-	Content     string          `json:"content"`
-	MessageType mig.MessageType `json:"message_type"`
+	ID           string                   `json:"id"`
+	SenderID     string                   `json:"sender_id"`
+	RecipientID  string                   `json:"recipient_id"`
+	Content      string                   `json:"content"`
+	WorflowState mig.MessageWorkflowState `json:"workflow_state"`
+	IsRead       null.Bool                `json:"is_read"`
 }
 
 func (m MessageUpdatedTopicPayload) GetTopic() Topic {
@@ -59,11 +61,9 @@ func (m MessageUpdatedTopicPayload) GetTopic() Topic {
 }
 
 type MessageDeletedTopicPayload struct {
-	ID          string          `json:"id"`
-	SenderID    string          `json:"sender_id"`
-	RecipientID string          `json:"recipient_id"`
-	Content     string          `json:"content"`
-	MessageType mig.MessageType `json:"message_type"`
+	ID          string `json:"id"`
+	SenderID    string `json:"sender_id"`
+	RecipientID string `json:"recipient_id"`
 }
 
 func (m MessageDeletedTopicPayload) GetTopic() Topic {

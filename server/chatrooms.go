@@ -1,22 +1,21 @@
 package mig
 
+import (
+	"time"
+
+	"github.com/guregu/null/v5"
+)
+
 type Chatroom struct {
 	ID            string                `json:"id"`
 	Name          string                `json:"name"`
 	WorkflowState ChatroomWorkflowState `json:"workflow_state"`
 	Type          ChatroomType          `json:"type"`
 	CreatedBy     string                `json:"created_by"`
-}
-
-type ChatroomWithCreator struct {
-	ID                   string                `json:"id"`
-	Name                 string                `json:"name"`
-	WorkflowState        ChatroomWorkflowState `json:"workflow_state"`
-	Type                 ChatroomType          `json:"type"`
-	CreatedBy            string                `json:"created_by"`
-	CreatorUsername      string                `json:"creator_username"`
-	CreatorEmail         string                `json:"creator_email"`
-	CreatorWorkflowState UserWorkflowState     `json:"creator_workflow_state"`
+	CreatedAt     *time.Time            `json:"created_at,omitempty"`
+	UpdatedAt     *time.Time            `json:"updated_at,omitempty"`
+	DeletedAt     *null.Time            `json:"deleted_at,omitempty"`
+	Creator       *User                 `json:"creator,omitempty"`
 }
 
 type ChatroomWorkflowState string

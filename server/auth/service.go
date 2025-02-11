@@ -251,7 +251,7 @@ func (s *Service) Signup(ctx context.Context, username, email, password string) 
 		Email:         email,
 		Username:      username,
 		WorkflowState: mig.UserWorkflowStateUnverified,
-		Role:          mig.MemberUserRole,
+		Role:          mig.UserRoleMember,
 	}
 
 	accessToken, userFingerprint, claims, err := s.auther.newAccessToken(user)

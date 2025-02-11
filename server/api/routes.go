@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -44,10 +45,18 @@ func NewHttpRouter(c *HttpApiController) (*chi.Mux, error) {
 		r.Get("/users/{user_id}", withAuth(c, c.GetUser))
 		r.With(paginate).Get("/users/{user_id}/private-messages", withAuth(c, c.GetPrivateMessages))
 
-		r.With(paginate).Get("/chatrooms", withAuth(c, c.GetChatrooms))
-		r.Get("/chatrooms/{chatroom_id}", withAuth(c, c.GetChatroom))
-		r.With(paginate).Get("/chatrooms/{chatroom_id}/messages", withAuth(c, c.GetChatroomMessages))
+		r.With(paginate).Get("/chatrooms", c.GetChatrooms)
+		r.Get("/chatrooms/{chatroom_id}", c.GetChatroom)
+		r.With(paginate).Get("/chatrooms/{chatroom_id}/messages", c.GetChatroomMessages)
+
+		r.Get("/hello", hello)
 	})
 
 	return r, nil
+}
+
+func hello(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(fmt.Sprintf(`{"message":"Hello World","time":"%s"}`, time.Now())))
 }

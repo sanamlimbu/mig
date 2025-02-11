@@ -33,11 +33,11 @@ type UserRepository interface {
 
 	// GetPrivateConversation returns private messages exchanged between specified users.
 	// Returned messages are paginated.
-	GetPrivateConversation(ctx context.Context, firstUserID, secondUserID string, pagination mig.Pagination) ([]mig.PrivateMessage, error)
+	GetPrivateConversation(ctx context.Context, firstUserID, secondUserID string, pagination mig.Pagination) ([]mig.Message, error)
 
 	// GetPrivateMessages returns private messages of specified user.
 	// Returned messages are paginated.
-	GetPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.PrivateMessage, error)
+	GetPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.Message, error)
 
 	// GetUserByEmail returns user for specified email address.
 	GetUserByEmail(ctx context.Context, email string) (mig.User, error)
@@ -57,6 +57,10 @@ type UserRepository interface {
 	GetRefreshToken(ctx context.Context, token string) (mig.RefreshToken, error)
 
 	SavePrivateMessage(ctx context.Context, arg SavePrivateMessageParams) (mig.Message, error)
+
+	UpdateMessage(ctx context.Context, arg UpdateMessageParams) (mig.Message, error)
+
+	DeleteMessage(ctx context.Context, id string) error
 }
 
 type UserRepositoryPostgreSQL struct {
@@ -208,26 +212,35 @@ func (r *UserRepositoryPostgreSQL) GetUserByUsername(ctx context.Context, userna
 	return getUserFromDBModel(result), nil
 }
 
-func getPrivateMessageFromDBModel(msg db.GetPrivateConversationRow) mig.PrivateMessage {
-	return mig.PrivateMessage{
-		ID:                     UUIDToString(msg.ID),
-		Content:                msg.Content,
-		WorkflowState:          mig.MessageWorkflowState(msg.WorkflowState),
-		Type:                   mig.MessageType(msg.MessageType),
-		CreatedAt:              msg.CreatedAt.Time,
-		SenderID:               UUIDToString(msg.SenderID),
-		RecipientID:            UUIDToString(msg.RecipientID),
-		SenderUsername:         msg.SenderUsername,
-		SenderEmail:            msg.SenderEmail,
-		SenderWorkflowState:    mig.UserWorkflowState(msg.SenderWorkflowState),
-		RecipientUsername:      msg.RecipientUsername,
-		RecipientEmail:         msg.RecipientEmail,
-		RecipientWorkflowState: mig.UserWorkflowState(msg.RecipientWorkflowState),
+func getPrivateMessageFromDBModel(msg db.GetPrivateConversationRow) mig.Message {
+	senderID := UUIDToString(msg.SenderID)
+	recipientID := null.NewString(UUIDToString(msg.RecipientID), msg.RecipientID.Valid)
+
+	return mig.Message{
+		ID:            UUIDToString(msg.ID),
+		Content:       msg.Content,
+		WorkflowState: mig.MessageWorkflowState(msg.WorkflowState),
+		Type:          mig.MessageType(msg.MessageType),
+		CreatedAt:     msg.CreatedAt.Time,
+		SenderID:      senderID,
+		RecipientID:   recipientID,
+		Sender: &mig.User{
+			ID:            senderID,
+			Email:         msg.SenderEmail,
+			Username:      msg.SenderUsername,
+			WorkflowState: mig.UserWorkflowState(msg.SenderWorkflowState),
+		},
+		Recipient: &mig.User{
+			ID:            recipientID.String,
+			Email:         msg.RecipientEmail,
+			Username:      msg.RecipientUsername,
+			WorkflowState: mig.UserWorkflowState(msg.RecipientWorkflowState),
+		},
 	}
 }
 
-func getPrivateMessagesFromDBModel(msgs []db.GetPrivateConversationRow) []mig.PrivateMessage {
-	result := make([]mig.PrivateMessage, len(msgs))
+func getPrivateMessagesFromDBModel(msgs []db.GetPrivateConversationRow) []mig.Message {
+	result := make([]mig.Message, len(msgs))
 
 	for i, msg := range msgs {
 		result[i] = getPrivateMessageFromDBModel(msg)
@@ -236,7 +249,7 @@ func getPrivateMessagesFromDBModel(msgs []db.GetPrivateConversationRow) []mig.Pr
 	return result
 }
 
-func (r *UserRepositoryPostgreSQL) GetPrivateConversation(ctx context.Context, firstUserID, secondUserID string, pagination mig.Pagination) ([]mig.PrivateMessage, error) {
+func (r *UserRepositoryPostgreSQL) GetPrivateConversation(ctx context.Context, firstUserID, secondUserID string, pagination mig.Pagination) ([]mig.Message, error) {
 	firstUserUUID, err := StringToUUID(firstUserID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid uuid %s", firstUserID)
@@ -262,7 +275,7 @@ func (r *UserRepositoryPostgreSQL) GetPrivateConversation(ctx context.Context, f
 	return getPrivateMessagesFromDBModel(result), nil
 }
 
-func (r *UserRepositoryPostgreSQL) GetPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.PrivateMessage, error) {
+func (r *UserRepositoryPostgreSQL) GetPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.Message, error) {
 	userUUID, err := StringToUUID(userID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid uuid %s", userID)
@@ -279,23 +292,32 @@ func (r *UserRepositoryPostgreSQL) GetPrivateMessages(ctx context.Context, userI
 		return nil, err
 	}
 
-	result := make([]mig.PrivateMessage, len(msgs))
+	result := make([]mig.Message, len(msgs))
 
 	for i, msg := range msgs {
-		result[i] = mig.PrivateMessage{
-			ID:                     UUIDToString(msg.ID),
-			Content:                msg.Content,
-			WorkflowState:          mig.MessageWorkflowState(msg.WorkflowState),
-			Type:                   mig.MessageType(msg.MessageType),
-			CreatedAt:              msg.CreatedAt.Time,
-			SenderID:               UUIDToString(msg.SenderID),
-			RecipientID:            UUIDToString(msg.RecipientID),
-			SenderUsername:         msg.SenderUsername,
-			SenderEmail:            msg.SenderEmail,
-			SenderWorkflowState:    mig.UserWorkflowState(msg.SenderWorkflowState),
-			RecipientUsername:      msg.RecipientUsername,
-			RecipientEmail:         msg.RecipientEmail,
-			RecipientWorkflowState: mig.UserWorkflowState(msg.RecipientWorkflowState),
+		senderID := UUIDToString(msg.SenderID)
+		recipientID := null.NewString(UUIDToString(msg.RecipientID), msg.RecipientID.Valid)
+
+		result[i] = mig.Message{
+			ID:            UUIDToString(msg.ID),
+			Content:       msg.Content,
+			WorkflowState: mig.MessageWorkflowState(msg.WorkflowState),
+			Type:          mig.MessageType(msg.MessageType),
+			CreatedAt:     msg.CreatedAt.Time,
+			SenderID:      senderID,
+			RecipientID:   recipientID,
+			Sender: &mig.User{
+				ID:            senderID,
+				Email:         msg.SenderEmail,
+				Username:      msg.SenderUsername,
+				WorkflowState: mig.UserWorkflowState(msg.SenderWorkflowState),
+			},
+			Recipient: &mig.User{
+				ID:            recipientID.String,
+				Email:         msg.RecipientEmail,
+				Username:      msg.RecipientUsername,
+				WorkflowState: mig.UserWorkflowState(msg.RecipientWorkflowState),
+			},
 		}
 	}
 
@@ -480,4 +502,57 @@ func (r *UserRepositoryPostgreSQL) SavePrivateMessage(ctx context.Context, arg S
 		IsRead:        null.NewBool(msg.IsRead.Bool, msg.IsRead.Valid),
 		CreatedAt:     msg.CreatedAt.Time,
 	}, nil
+}
+
+type UpdateMessageParams struct {
+	ID           string
+	Content      string
+	WorflowState mig.MessageWorkflowState
+	IsRead       null.Bool
+}
+
+func (r *UserRepositoryPostgreSQL) UpdateMessage(ctx context.Context, arg UpdateMessageParams) (mig.Message, error) {
+	uuid, err := StringToUUID(arg.ID)
+	if err != nil {
+		return mig.Message{}, err
+
+	}
+
+	msg, err := r.queries.UpdateMessage(ctx, db.UpdateMessageParams{
+		Content:       arg.Content,
+		WorkflowState: db.MessageWorkflowState(arg.WorflowState),
+		IsRead:        pgtype.Bool{Bool: arg.IsRead.Bool, Valid: arg.IsRead.Valid},
+		ID:            uuid,
+	})
+
+	if err != nil {
+		return mig.Message{}, err
+	}
+
+	return mig.Message{
+		ID:            UUIDToString(msg.ID),
+		Content:       msg.Content,
+		WorkflowState: mig.MessageWorkflowState(msg.WorkflowState),
+		Type:          mig.MessageType(msg.MessageType),
+		SenderID:      UUIDToString(msg.SenderID),
+		RecipientID:   null.NewString(UUIDToString(msg.RecipientID), msg.RecipientID.Valid),
+		ChatroomID:    null.NewString(UUIDToString(msg.ChatroomID), msg.ChatroomID.Valid),
+		IsRead:        null.NewBool(msg.IsRead.Bool, msg.IsRead.Valid),
+		CreatedAt:     msg.CreatedAt.Time,
+	}, nil
+}
+
+func (r *UserRepositoryPostgreSQL) DeleteMessage(ctx context.Context, id string) error {
+	uuid, err := StringToUUID(id)
+	if err != nil {
+		return err
+
+	}
+
+	_, err = r.queries.DeleteMessage(ctx, db.DeleteMessageParams{
+		DeletedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		ID:        uuid,
+	})
+
+	return err
 }

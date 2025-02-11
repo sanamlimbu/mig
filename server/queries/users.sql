@@ -119,3 +119,19 @@ INSERT INTO messages (
   $1, $2, $3, $4, 'created', 'private'
 )
 RETURNING *;
+
+-- name: UpdateMessage :one
+UPDATE messages
+SET 
+  content = $1,
+  workflow_state = $2,
+  is_read = $3
+WHERE id = $4
+RETURNING *;
+
+-- name: DeleteMessage :one
+UPDATE messages
+SET 
+  deleted_at = $1
+WHERE id = $2
+RETURNING *;
