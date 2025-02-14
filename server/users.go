@@ -22,9 +22,9 @@ type User struct {
 	Username      string            `json:"username"`
 	WorkflowState UserWorkflowState `json:"workflow_state"`
 	Role          UserRole          `json:"role"`
-	CreatedAt     *time.Time        `json:"created_at,omitempty"`
-	UpdatedAt     *time.Time        `json:"updated_at,omitempty"`
-	DeletedAt     *null.Time        `json:"deleted_at,omitempty"`
+	CreatedAt     time.Time         `json:"created_at,omitzero"`
+	UpdatedAt     time.Time         `json:"updated_at,omitzero"`
+	DeletedAt     null.Time         `json:"deleted_at,omitzero"`
 }
 
 type UserWorkflowState string

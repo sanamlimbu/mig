@@ -58,7 +58,7 @@ func getChatroomWithCreatorFromDBModel(chatroom db.GetChatroomWithCreatorRow) mi
 		WorkflowState: mig.ChatroomWorkflowState(chatroom.WorkflowState),
 		Type:          mig.ChatroomType(chatroom.Type),
 		CreatedBy:     creatorID,
-		Creator: &mig.User{
+		Creator: mig.User{
 			ID:            creatorID,
 			Email:         chatroom.CreatorEmail,
 			Username:      chatroom.CreatorUsername,
@@ -99,13 +99,13 @@ func getChatroomMessageFromDBModel(msg db.GetChatroomMessagesRow) mig.Message {
 		CreatedAt:     msg.CreatedAt.Time,
 		SenderID:      senderID,
 		ChatroomID:    chatroomID,
-		Sender: &mig.User{
+		Sender: mig.User{
 			ID:            senderID,
 			Email:         msg.SenderEmail,
 			Username:      msg.SenderUsername,
 			WorkflowState: mig.UserWorkflowState(msg.SenderWorkflowState),
 		},
-		Chatroom: &mig.Chatroom{
+		Chatroom: mig.Chatroom{
 			ID:            chatroomID.String,
 			Name:          msg.ChatroomName,
 			WorkflowState: mig.ChatroomWorkflowState(msg.ChatroomWorkflowState),

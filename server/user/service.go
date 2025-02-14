@@ -215,13 +215,13 @@ func (s *Service) SavePrivateMessage(ctx context.Context, arg SavePrivateMessage
 		CreatedAt:     msg.CreatedAt,
 		SenderID:      msg.SenderID,
 		RecipientID:   msg.RecipientID,
-		Sender: &mig.User{
+		Sender: mig.User{
 			ID:            sender.ID,
 			Email:         sender.Email,
 			Username:      sender.Username,
 			WorkflowState: sender.WorkflowState,
 		},
-		Recipient: &mig.User{
+		Recipient: mig.User{
 			ID:            recipient.ID,
 			Email:         recipient.Email,
 			Username:      recipient.Username,
@@ -275,13 +275,13 @@ func (s *Service) SaveChatroomMessage(ctx context.Context, arg SaveChatroomMessa
 		CreatedAt:     msg.CreatedAt,
 		SenderID:      msg.SenderID,
 		ChatroomID:    msg.ChatroomID,
-		Sender: &mig.User{
+		Sender: mig.User{
 			ID:            sender.ID,
 			Email:         sender.Email,
 			Username:      sender.Username,
 			WorkflowState: sender.WorkflowState,
 		},
-		Chatroom: &mig.Chatroom{
+		Chatroom: mig.Chatroom{
 			ID:            chatroom.ID,
 			Name:          chatroom.Name,
 			Type:          chatroom.Type,

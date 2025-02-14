@@ -12,10 +12,10 @@ type Chatroom struct {
 	WorkflowState ChatroomWorkflowState `json:"workflow_state"`
 	Type          ChatroomType          `json:"type"`
 	CreatedBy     string                `json:"created_by"`
-	CreatedAt     *time.Time            `json:"created_at,omitempty"`
-	UpdatedAt     *time.Time            `json:"updated_at,omitempty"`
-	DeletedAt     *null.Time            `json:"deleted_at,omitempty"`
-	Creator       *User                 `json:"creator,omitempty"`
+	CreatedAt     time.Time             `json:"created_at,omitzero"`
+	UpdatedAt     time.Time             `json:"updated_at,omitzero"`
+	DeletedAt     null.Time             `json:"deleted_at,omitzero"`
+	Creator       User                  `json:"creator,omitzero"`
 }
 
 type ChatroomWorkflowState string

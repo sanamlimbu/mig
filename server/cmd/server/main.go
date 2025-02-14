@@ -54,7 +54,7 @@ func main() {
 					&cli.StringFlag{Name: "environment", Value: "dev", EnvVars: []string{"MIG_ENVIRONMENT"}, Usage: "deployment environnment (dev, prod) of server"},
 					&cli.StringFlag{Name: "jwt_secret", Value: "devdev", EnvVars: []string{"MIG_JWT_SECRET"}, Usage: "secret to sign jwt"},
 					&cli.StringFlag{Name: "app_name", Value: "mig-api-server", EnvVars: []string{"MIG_APP_NAME"}, Usage: "application name"},
-					&cli.StringFlag{Name: "nats_url", Value: "nats://127.0.0.1:4222", EnvVars: []string{"MIG_NATS_URL"}, Usage: "NATS url"},
+					&cli.StringFlag{Name: "nats_url", Value: "nats://my-nats-secret@localhost:4222", EnvVars: []string{"MIG_NATS_URL"}, Usage: "NATS url"},
 
 					&cli.StringFlag{Name: "database_user", Value: "mig", EnvVars: []string{"MIG_DATABASE_USER"}, Usage: "database user"},
 					&cli.StringFlag{Name: "database_pass", Value: "devdev", EnvVars: []string{"MIG_DATABASE_PASS"}, Usage: "database pass"},

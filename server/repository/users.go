@@ -224,13 +224,13 @@ func getPrivateMessageFromDBModel(msg db.GetPrivateConversationRow) mig.Message 
 		CreatedAt:     msg.CreatedAt.Time,
 		SenderID:      senderID,
 		RecipientID:   recipientID,
-		Sender: &mig.User{
+		Sender: mig.User{
 			ID:            senderID,
 			Email:         msg.SenderEmail,
 			Username:      msg.SenderUsername,
 			WorkflowState: mig.UserWorkflowState(msg.SenderWorkflowState),
 		},
-		Recipient: &mig.User{
+		Recipient: mig.User{
 			ID:            recipientID.String,
 			Email:         msg.RecipientEmail,
 			Username:      msg.RecipientUsername,
@@ -306,13 +306,13 @@ func (r *UserRepositoryPostgreSQL) GetPrivateMessages(ctx context.Context, userI
 			CreatedAt:     msg.CreatedAt.Time,
 			SenderID:      senderID,
 			RecipientID:   recipientID,
-			Sender: &mig.User{
+			Sender: mig.User{
 				ID:            senderID,
 				Email:         msg.SenderEmail,
 				Username:      msg.SenderUsername,
 				WorkflowState: mig.UserWorkflowState(msg.SenderWorkflowState),
 			},
-			Recipient: &mig.User{
+			Recipient: mig.User{
 				ID:            recipientID.String,
 				Email:         msg.RecipientEmail,
 				Username:      msg.RecipientUsername,

@@ -31,9 +31,9 @@ type Message struct {
 	RecipientID   null.String          `json:"recipient_id"`
 	ChatroomID    null.String          `json:"chatroom_id"`
 	IsRead        null.Bool            `json:"is_read"`
-	Sender        *User                `json:"sender,omitempty"`
-	Chatroom      *Chatroom            `json:"chatroom,omitempty"`
-	Recipient     *User                `json:"recipient,omitempty"`
+	Sender        User                 `json:"sender,omitzero"`
+	Chatroom      Chatroom             `json:"chatroom,omitzero"`
+	Recipient     User                 `json:"recipient,omitzero"`
 	CreatedAt     time.Time            `json:"created_at"`
 	UpdatedAt     time.Time            `json:"updated_at"`
 	DeletedAt     null.Time            `json:"deleted_at"`
