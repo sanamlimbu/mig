@@ -1,6 +1,6 @@
 module mig
 
-go 1.23.3
+go 1.24
 
 require (
 	github.com/brianvoe/gofakeit/v7 v7.1.2
@@ -9,6 +9,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
+	github.com/guregu/null/v5 v5.0.0
 	github.com/jackc/pgx/v5 v5.7.1
 	github.com/nats-io/nats.go v1.37.0
 	github.com/ory/dockertest/v3 v3.11.0
@@ -33,7 +34,6 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/guregu/null/v5 v5.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
