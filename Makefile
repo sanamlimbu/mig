@@ -36,15 +36,15 @@ docker-setup:
 
 .PHONY: db-status
 db-status:
-	goose postgres $(DB_CONNECTION_STRING) -dir $(SERVER)/migrations status
+	cd $(SERVER) && go tool goose postgres $(DB_CONNECTION_STRING) -dir ./migrations status
 
 .PHONY: db-down
 db-down:
-	goose postgres "$(DB_CONNECTION_STRING)" -dir $(SERVER)/migrations down
+	cd $(SERVER) && go tool goose postgres "$(DB_CONNECTION_STRING)" -dir ./migrations down
 
 .PHONY: db-migrate
 db-migrate:
-	goose postgres "$(DB_CONNECTION_STRING)" -dir $(SERVER)/migrations up
+	cd $(SERVER) && go tool goose postgres "$(DB_CONNECTION_STRING)" -dir ./migrations up
 
 .PHONY: db-prepare
 db-prepare: db-down db-migrate
@@ -82,7 +82,7 @@ serve:
 
 .PHONY: generate
 generate:
-	cd $(SERVER) && sqlc generate
+	cd $(SERVER) && go tool sqlc generate
 
 .PHONY: web-install
 web-install:
