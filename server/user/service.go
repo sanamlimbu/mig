@@ -146,6 +146,7 @@ type SaveMessageParams struct {
 }
 
 func (s *Service) SaveMessage(ctx context.Context, arg SaveMessageParams) error {
+	fmt.Println(arg.Type)
 	if arg.Type == mig.MessageTypePrivate {
 		_, err := s.SavePrivateMessage(ctx, SavePrivateMessageParams{
 			ID:          arg.ID,

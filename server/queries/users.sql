@@ -32,22 +32,26 @@ LIMIT @page_size
 OFFSET @page;
 
 -- name: GetRecentUniquePrivateMessages :many
-SELECT DISTINCT ON (LEAST(m.sender_id, m.recipient_id), GREATEST(m.sender_id, m.recipient_id))
-  m.*,
-  s.username sender_username,
-  s.email sender_email,
-  s.workflow_state sender_workflow_state,
-  r.username recipient_username,
-  r.email recipient_email,
-  r.workflow_state recipient_workflow_state
-FROM messages m
-JOIN users s ON s.id = m.sender_id
-JOIN users r ON r.id = m.recipient_id
-WHERE m.sender_id = @user_id OR m.recipient_id = @user_id
-ORDER BY 
-  LEAST (m.sender_id, m.recipient_id),
-  GREATEST (m.sender_id, m.recipient_id),
-  m.created_at DESC
+SELECT *
+FROM (
+  SELECT DISTINCT ON (LEAST(m.sender_id, m.recipient_id), GREATEST(m.sender_id, m.recipient_id))
+    m.*,
+    s.username sender_username,
+    s.email sender_email,
+    s.workflow_state sender_workflow_state,
+    r.username recipient_username,
+    r.email recipient_email,
+    r.workflow_state recipient_workflow_state
+  FROM messages m
+  JOIN users s ON s.id = m.sender_id
+  JOIN users r ON r.id = m.recipient_id
+  WHERE m.sender_id = @user_id OR m.recipient_id = @user_id
+  ORDER BY 
+    LEAST (m.sender_id, m.recipient_id),
+    GREATEST (m.sender_id, m.recipient_id),
+    m.created_at DESC
+) subquery
+ORDER BY subquery.created_at DESC
 LIMIT @page_size
 OFFSET @page;
 

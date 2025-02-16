@@ -323,22 +323,26 @@ func (q *Queries) GetPrivateConversation(ctx context.Context, arg GetPrivateConv
 }
 
 const getRecentUniquePrivateMessages = `-- name: GetRecentUniquePrivateMessages :many
-SELECT DISTINCT ON (LEAST(m.sender_id, m.recipient_id), GREATEST(m.sender_id, m.recipient_id))
-  m.id, m.sender_id, m.recipient_id, m.chatroom_id, m.workflow_state, m.message_type, m.content, m.is_read, m.created_at, m.updated_at, m.deleted_at,
-  s.username sender_username,
-  s.email sender_email,
-  s.workflow_state sender_workflow_state,
-  r.username recipient_username,
-  r.email recipient_email,
-  r.workflow_state recipient_workflow_state
-FROM messages m
-JOIN users s ON s.id = m.sender_id
-JOIN users r ON r.id = m.recipient_id
-WHERE m.sender_id = $1 OR m.recipient_id = $1
-ORDER BY 
-  LEAST (m.sender_id, m.recipient_id),
-  GREATEST (m.sender_id, m.recipient_id),
-  m.created_at DESC
+SELECT id, sender_id, recipient_id, chatroom_id, workflow_state, message_type, content, is_read, created_at, updated_at, deleted_at, sender_username, sender_email, sender_workflow_state, recipient_username, recipient_email, recipient_workflow_state
+FROM (
+  SELECT DISTINCT ON (LEAST(m.sender_id, m.recipient_id), GREATEST(m.sender_id, m.recipient_id))
+    m.id, m.sender_id, m.recipient_id, m.chatroom_id, m.workflow_state, m.message_type, m.content, m.is_read, m.created_at, m.updated_at, m.deleted_at,
+    s.username sender_username,
+    s.email sender_email,
+    s.workflow_state sender_workflow_state,
+    r.username recipient_username,
+    r.email recipient_email,
+    r.workflow_state recipient_workflow_state
+  FROM messages m
+  JOIN users s ON s.id = m.sender_id
+  JOIN users r ON r.id = m.recipient_id
+  WHERE m.sender_id = $1 OR m.recipient_id = $1
+  ORDER BY 
+    LEAST (m.sender_id, m.recipient_id),
+    GREATEST (m.sender_id, m.recipient_id),
+    m.created_at DESC
+) subquery
+ORDER BY subquery.created_at DESC
 LIMIT $3
 OFFSET $2
 `
