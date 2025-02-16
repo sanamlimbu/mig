@@ -46,7 +46,7 @@ export default function Chatrooms() {
         </div>
         <ScrollArea className="flex-grow">
           <div>
-            {data?.data.map((chatroom) => (
+            {data?.map((chatroom) => (
               <div
                 key={chatroom.id}
                 className="cursor-pointer hover:bg-slate-100 w-full"

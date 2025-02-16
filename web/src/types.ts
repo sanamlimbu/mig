@@ -26,6 +26,7 @@ export interface Message {
   workflow_state: MessageWorkflowState;
   is_read: boolean | null;
   content: string;
+  type: MessageType;
   recipient_id: string | null;
   chatroom_id: string | null;
   sender_id: string;
@@ -56,12 +57,12 @@ export interface Chatroom {
 interface AuthenticationPayload {
   access_token: string;
 }
-interface MessageCreatedPayload {
+export interface MessageCreatedPayload {
   id: string;
   sender_id: string;
   recipient_id: string;
   content: string;
-  message_type: MessageType;
+  type: MessageType;
 }
 
 type WebSocketMessageType =

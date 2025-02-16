@@ -9,8 +9,7 @@ export default function WebsocketProvider(props: PropsWithChildren) {
   const { sendJsonMessage, lastJsonMessage, readyState } =
     useWebSocket<WebSocketMessage>(WS_BASE_URL, {
       share: true,
-      // Prevent reconnection if no auth token.
-      shouldReconnect: () => !!getAuthToken(),
+      shouldReconnect: () => !!getAuthToken(), // Prevent reconnection if no auth token.
       onOpen: () => {
         const authToken = getAuthToken();
         if (authToken) {

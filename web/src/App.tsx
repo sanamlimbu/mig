@@ -1,17 +1,13 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useContext } from 'react';
 import Home from './components/home';
-import AuthProvider from './providers/auth';
+import Login from './components/login';
+import { AuthContext } from './contexts/auth';
 
-const queryClient = new QueryClient();
+export default function App() {
+  const auth = useContext(AuthContext);
+  if (auth?.user === null) {
+    return <Login />;
+  }
 
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Home />
-      </AuthProvider>
-    </QueryClientProvider>
-  );
+  return <Home />;
 }
-
-export default App;

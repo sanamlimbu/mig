@@ -1,62 +1,45 @@
-import { getPrivateConversation } from '@/api/user';
+import {
+  getPrivateConversation,
+  getPrivateConversationQueryKey,
+} from '@/api/user';
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { WS_BASE_URL } from '@/constants';
-import { User, WebSocketMessage } from '@/types';
+import {
+  Message,
+  MessageCreatedPayload,
+  User,
+  WebSocketMessage,
+} from '@/types';
 import { getAuthToken } from '@/utils/auth';
 import { DotsVerticalIcon, PersonIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import useWebSocket from 'react-use-websocket';
 import { v4 as uuidv4 } from 'uuid';
 import SendIcon from '../assets/send.svg';
 import { Textarea } from './ui/textarea';
 
+// https://github.com/radix-ui/primitives/discussions/990
+
 interface PrivateChatProps {
   user: User;
   recipient: User;
 }
+
 export default function PrivateChat({ user, recipient }: PrivateChatProps) {
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const { sendJsonMessage, lastJsonMessage } = useWebSocket<WebSocketMessage>(
-    WS_BASE_URL,
-    {
-      share: true,
-      shouldReconnect: () => !!getAuthToken(),
-    }
-  );
+  return <GetPrivateChat user={user} recipient={recipient} />;
+}
 
-  useEffect(() => {}, [lastJsonMessage]);
-
+function GetPrivateChat({ user, recipient }: { user: User; recipient: User }) {
   const { isPending, isError, data, error } = useQuery({
-    queryKey: [user.id, 'private-conversation', recipient.id],
-    queryFn: () => {
-      if (user === null) {
-        return undefined;
-      }
-      return getPrivateConversation(user.id, recipient.id, {
+    queryKey: getPrivateConversationQueryKey(user.id, recipient.id),
+    queryFn: () =>
+      getPrivateConversation(user.id, recipient.id, {
         page: 1,
         page_size: 20,
-      });
-    },
+      }),
   });
-
-  const handleSend = () => {
-    if (!inputRef.current) {
-      return;
-    }
-
-    sendJsonMessage<WebSocketMessage>({
-      type: 'message_created',
-      payload: {
-        id: uuidv4(),
-        sender_id: user.id,
-        recipient_id: recipient.id,
-        content: inputRef.current?.value,
-        message_type: 'private',
-      },
-    });
-  };
 
   if (isPending) {
     return <div>Loading</div>;
@@ -65,6 +48,71 @@ export default function PrivateChat({ user, recipient }: PrivateChatProps) {
   if (isError) {
     return <div>{error.message};</div>;
   }
+
+  return <Chat user={user} recipient={recipient} data={data} />;
+}
+
+function Chat({
+  user,
+  recipient,
+  data,
+}: {
+  user: User;
+  recipient: User;
+  data: Message[];
+}) {
+  const [messages, setMessages] = useState<Partial<Message>[]>([]);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const { sendJsonMessage, lastJsonMessage } = useWebSocket<WebSocketMessage>(
+    WS_BASE_URL,
+    {
+      share: true,
+      shouldReconnect: () => !!getAuthToken(), // Prevent reconnection if no auth token.
+    }
+  );
+
+  useEffect(() => {
+    if (lastJsonMessage && lastJsonMessage.type === 'message_created') {
+      const payload = lastJsonMessage.payload as MessageCreatedPayload;
+      const message: Partial<Message> = {
+        id: payload.id,
+        content: payload.content,
+        recipient_id: payload.recipient_id,
+        sender_id: payload.sender_id,
+        type: payload.type,
+      };
+      setMessages((prev) => {
+        if (prev.some((msg) => msg.id === message.id)) return prev;
+        return [message, ...prev];
+      });
+    }
+  }, [lastJsonMessage]);
+
+  useEffect(() => setMessages(data), [data]);
+
+  const handleSend = () => {
+    if (!inputRef.current) {
+      return;
+    }
+
+    const message: MessageCreatedPayload = {
+      id: uuidv4(),
+      sender_id: user.id,
+      recipient_id: recipient.id,
+      content: inputRef.current?.value,
+      type: 'private',
+    };
+
+    sendJsonMessage<WebSocketMessage>(
+      {
+        type: 'message_created',
+        payload: message,
+      },
+      true
+    );
+
+    setMessages((prev) => [message, ...prev]);
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -87,8 +135,8 @@ export default function PrivateChat({ user, recipient }: PrivateChatProps) {
       </div>
       <ScrollArea className="pr-2 bg-slate-50 flex-grow">
         <div className="px-3 pt-3 flex flex-col-reverse">
-          {data?.map((msg) => {
-            const isSentByUser = msg.sender_username === user.username;
+          {messages?.map((msg) => {
+            const isSentByUser = msg.sender_id === user.id;
             return (
               <div
                 key={msg.id}

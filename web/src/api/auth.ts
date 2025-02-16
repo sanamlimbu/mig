@@ -10,11 +10,12 @@ export interface AuthToken {
   user: User;
 }
 
-export function login(username: string, password: string) {
-  return axios.post<AuthToken>('/login', {
+export async function login(username: string, password: string) {
+  const resp = await axios.post<AuthToken>('/login', {
     username: username,
     password: password,
   });
+  return resp.data;
 }
 
 export async function refreshAccessToken(): Promise<string> {

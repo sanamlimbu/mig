@@ -1,6 +1,13 @@
 import { axios } from '@/axios';
 import { Message, Pagination } from '@/types';
 
+export function getPrivateConversationQueryKey(
+  userID: string,
+  recipientID: string
+) {
+  return [userID, 'private-conversation', recipientID];
+}
+
 export async function getRecentPrivateMessages(
   userID: string,
   pagination: Pagination

@@ -182,10 +182,18 @@ func (h *WsHub) HandleBrokerMessage(topic messagebroker.Topic, msg []byte) error
 				return err
 			}
 
+			send, err := json.Marshal(WebsocketMessage{
+				Type:    WebsocketMessageTypeMessageCreated,
+				Payload: payload,
+			})
+			if err != nil {
+				return err
+			}
+
 			if clients, ok := h.clients.Load(payload.RecipientID); ok {
 				for _, client := range clients.([]*Client) {
 					go func(client *Client) {
-						client.send <- msg
+						client.send <- send
 					}(client)
 				}
 			}

@@ -1,45 +1,18 @@
-import { WS_BASE_URL } from '@/constants';
-import { AuthContext } from '@/contexts/auth';
-import { WebSocketMessage } from '@/types';
-import { getAuthToken } from '@/utils/auth';
+import { useReactQuerySubscription } from '@/hooks/reactQuerySubscription';
 import {
   ChatBubbleIcon,
   Component1Icon,
   GroupIcon,
 } from '@radix-ui/react-icons';
-import { useContext, useState } from 'react';
-import useWebSocket from 'react-use-websocket';
+import { useState } from 'react';
 import Chatrooms from './chatrooms';
-import Login from './login';
 import PrivateChats from './privateChats';
 
 type Menu = 'Chats' | 'Status' | 'Chatrooms';
 
 export default function Home() {
-  const auth = useContext(AuthContext);
+  useReactQuerySubscription();
   const [menu, setMenu] = useState<Menu>('Chats');
-  const { sendJsonMessage } = useWebSocket<WebSocketMessage>(WS_BASE_URL, {
-    share: true,
-    onOpen: () => {
-      const authToken = getAuthToken();
-      if (!authToken) {
-        return;
-      }
-
-      sendJsonMessage<WebSocketMessage>({
-        type: 'authentication',
-        payload: {
-          access_token: authToken.access_token,
-        },
-      });
-    },
-    // Prevent reconnection if no auth token.
-    shouldReconnect: () => !!getAuthToken(),
-  });
-
-  if (auth?.user === null) {
-    return <Login />;
-  }
 
   return (
     <div className="h-screen flex flex-col overflow-hidden relative">

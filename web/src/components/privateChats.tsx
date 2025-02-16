@@ -1,9 +1,17 @@
 import { getRecentPrivateMessages } from '@/api/user';
+import { WS_BASE_URL } from '@/constants';
 import { useAuth } from '@/hooks/auth';
-import { Message, User } from '@/types';
+import {
+  Message,
+  MessageCreatedPayload,
+  User,
+  WebSocketMessage,
+} from '@/types';
+import { convetDateToFormattedString } from '@/utils/helpers';
 import { PersonIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import useWebSocket from 'react-use-websocket';
 import PrivateChat from './privateChat';
 import { Avatar, AvatarImage } from './ui/avatar';
 import { Input } from './ui/input';
@@ -11,7 +19,7 @@ import { ScrollArea } from './ui/scroll-area';
 
 export default function PrivateChats() {
   const { user } = useAuth();
-  const [recipient, setRecipient] = useState<User>();
+  const [selectedRecipient, setSelectedRecipient] = useState<User>();
 
   const { isPending, isError, data, error } = useQuery({
     queryKey: [user.id, 'recent-private-messages'],
@@ -43,57 +51,87 @@ export default function PrivateChats() {
             placeholder="Search"
           />
         </div>
-        <ScrollArea className="flex-grow">
+        <ScrollArea className="h-[100vh] flex-grow">
           <div>
-            {data?.map((msg) => (
-              <div
-                key={msg.id}
-                className="cursor-pointer hover:bg-slate-100 w-full"
-              >
-                <PrivateChatItem
-                  user={user}
-                  message={msg}
-                  updateRecipient={(recipient) => setRecipient(recipient)}
-                />
-              </div>
-            ))}
+            {data?.map((msg) => {
+              const recipient =
+                user.id === msg.sender_id ? msg.recipient : msg.sender;
+              return (
+                <div
+                  key={msg.id}
+                  className={`cursor-pointer hover:bg-slate-100 w-full ${
+                    selectedRecipient?.id === msg.recipient?.id &&
+                    'bg-slate-100'
+                  }`}
+                >
+                  <PrivateChatItem
+                    recipient={recipient!}
+                    message={msg}
+                    selectedRecipient={selectedRecipient}
+                    updateRecipientSelection={(recipient) =>
+                      setSelectedRecipient(recipient)
+                    }
+                  />
+                </div>
+              );
+            })}
           </div>
         </ScrollArea>
       </div>
       <div className="w-full flex-grow min-w-96">
-        {recipient && <PrivateChat user={user} recipient={recipient} />}
+        {selectedRecipient && (
+          <PrivateChat user={user} recipient={selectedRecipient} />
+        )}
       </div>
     </div>
   );
 }
 
 interface PrivateChatItemProps {
-  user: User;
+  recipient: User;
   message: Message;
-  updateRecipient: (recipient: User | undefined) => void;
+  selectedRecipient: User | undefined;
+  updateRecipientSelection: (recipient: User | undefined) => void;
 }
 
 function PrivateChatItem({
-  user,
+  recipient,
   message,
-  updateRecipient,
+  selectedRecipient,
+  updateRecipientSelection,
 }: PrivateChatItemProps) {
-  const recipient =
-    user.id === message.sender_id ? message.recipient : message.sender;
+  const [messages, setMessages] = useState<Partial<Message>[]>([message]);
+  const { lastJsonMessage } = useWebSocket<WebSocketMessage>(WS_BASE_URL, {
+    share: true,
+  });
 
-  const convetDateToFormattedString = (str: string) => {
-    const date = new Date(str);
+  useEffect(() => {
+    if (lastJsonMessage && lastJsonMessage.type === 'message_created') {
+      const payload = lastJsonMessage.payload as MessageCreatedPayload;
+      const message: Partial<Message> = {
+        id: payload.id,
+        content: payload.content,
+        recipient_id: payload.recipient_id,
+        sender_id: payload.sender_id,
+        type: payload.type,
+      };
+      console.log(message);
 
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
+      if (message.sender_id === recipient.id) {
+        if (message.sender_id === selectedRecipient?.id) {
+          setMessages((prev) => [{ ...message, is_read: true }, ...prev]);
+        } else {
+          setMessages((prev) => [{ ...message, is_read: false }, ...prev]);
+        }
+      }
+    }
+  }, [lastJsonMessage, recipient.id, selectedRecipient?.id]);
 
-    return `${day}/${month}/${year}`;
-  };
+  const unreadMessages = messages.filter((msg) => !msg.is_read);
 
   return (
     <div
-      onClick={() => updateRecipient(recipient)}
+      onClick={() => updateRecipientSelection(recipient)}
       className="text-gray-800 p-4 max-w-md"
     >
       <div className="flex items-center gap-4">
@@ -113,7 +151,12 @@ function PrivateChatItem({
               {convetDateToFormattedString(message.created_at)}
             </p>
           </div>
-          <p className="text-sm truncate">{message.content}</p>
+          <div className="flex text-sm justify-between items-center gap-2">
+            <p className="truncate flex-1">{message.content}</p>
+            <p className="bg-green-500 text-white rounded-full min-w-[20px] h-5 flex items-center justify-center px-1 text-[10px]">
+              {unreadMessages.length}
+            </p>
+          </div>
         </div>
       </div>
     </div>
