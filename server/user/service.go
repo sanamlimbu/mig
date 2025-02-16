@@ -117,9 +117,9 @@ func (s *Service) GetUser(ctx context.Context, userID string) (mig.User, error) 
 	return result, nil
 }
 
-// GetPrivateMessages returns private messages of given users.
+// GetRecentPrivateMessages returns recent private messages of given user.
 // Result is paginated.
-func (s *Service) GetPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.Message, error) {
+func (s *Service) GetRecentPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.Message, error) {
 	_, err := s.userRepo.GetUser(ctx, userID)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return nil, mig.NewError(fmt.Sprintf("not found user of id %s", userID), err, mig.NotFoundError)
@@ -129,7 +129,7 @@ func (s *Service) GetPrivateMessages(ctx context.Context, userID string, paginat
 		return nil, mig.NewError(fmt.Sprintf("unable to fetch user of id %s", userID), err, mig.InternalServerError)
 	}
 
-	result, err := s.userRepo.GetPrivateMessages(ctx, userID, pagination)
+	result, err := s.userRepo.GetRecentPrivateMessages(ctx, userID, pagination)
 	if err != nil {
 		return nil, mig.NewError(fmt.Sprintf("unable to fetch private messages of user id %s", userID), err, mig.InternalServerError)
 	}

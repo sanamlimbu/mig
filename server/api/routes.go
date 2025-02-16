@@ -43,7 +43,7 @@ func NewHttpRouter(c *HttpApiController) (*chi.Mux, error) {
 		r.With(paginate).Get("/users/{user_id}/friends", withAuth(c, c.GetFriends))
 		r.With(paginate).Get("/users/{user_id}/private-conversation/{recipient_id}", withAuth(c, c.GetPrivateConversation))
 		r.Get("/users/{user_id}", withAuth(c, c.GetUser))
-		r.With(paginate).Get("/users/{user_id}/private-messages", withAuth(c, c.GetPrivateMessages))
+		r.With(paginate).Get("/users/{user_id}/recent-private-messages", withAuth(c, c.GetRecentPrivateMessages))
 
 		r.With(paginate).Get("/chatrooms", c.GetChatrooms)
 		r.Get("/chatrooms/{chatroom_id}", c.GetChatroom)

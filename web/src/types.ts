@@ -4,31 +4,37 @@ export interface Pagination {
 }
 
 type UserWorkflowState = 'active' | 'suspended' | 'unverified' | 'deleted';
+
+type UserRole = 'superadmin' | 'admin' | 'member';
 export interface User {
   id: string;
   username: string;
   email: string;
   workflow_state: UserWorkflowState;
   avatar_url: string;
+  role: UserRole;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string;
 }
 
 export type MessageWorkflowState = 'created' | 'updated' | 'deleted';
 
 export type MessageType = 'private' | 'chatroom';
-export interface PrivateMessage {
+export interface Message {
   id: string;
   workflow_state: MessageWorkflowState;
-  is_read: boolean;
+  is_read: boolean | null;
   content: string;
-  created_at: string;
-  recipient_id: string;
-  recipient_username: string;
-  recipient_email: string;
-  recipient_workflow_state: UserWorkflowState;
+  recipient_id: string | null;
+  chatroom_id: string | null;
   sender_id: string;
-  sender_email: string;
-  sender_username: string;
-  sender_workflow_state: UserWorkflowState;
+  sender?: User;
+  chatroom?: Chatroom;
+  recipient?: User;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
 }
 
 type ChatroomWorkflowState = 'active' | 'deleted';
@@ -38,27 +44,13 @@ export interface Chatroom {
   id: string;
   name: string;
   workflow_state: ChatroomWorkflowState;
-  status: string;
   type: ChatroomType;
   avatar_url: string;
   created_by: string;
-  creator_username: string;
-  creator_email: string;
-  creator_workflow_state: UserWorkflowState;
-}
-
-export interface ChatroomMessage {
-  id: string;
-  workflow_state: MessageWorkflowState;
-  content: string;
-  created_at: string;
-  chatroom_id: string;
-  chatroon_workflow_state: ChatroomWorkflowState;
-  chatroom_type: ChatroomType;
-  sender_id: string;
-  sender_email: string;
-  sender_username: string;
-  sender_workflow_state: UserWorkflowState;
+  creator?: User;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string;
 }
 
 interface AuthenticationPayload {

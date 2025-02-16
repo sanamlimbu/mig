@@ -32,8 +32,6 @@ export default function Chatrooms() {
     return <div>{'error'}</div>;
   }
 
-  console.log(data.data);
-
   return (
     <div className="flex w-full overflow-x-auto">
       <div className="flex flex-col w-full max-w-md">

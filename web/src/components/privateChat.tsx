@@ -87,7 +87,7 @@ export default function PrivateChat({ user, recipient }: PrivateChatProps) {
       </div>
       <ScrollArea className="pr-2 bg-slate-50 flex-grow">
         <div className="px-3 pt-3 flex flex-col-reverse">
-          {data?.data.map((msg) => {
+          {data?.map((msg) => {
             const isSentByUser = msg.sender_username === user.username;
             return (
               <div

@@ -8,10 +8,11 @@ export function useAuth() {
     throw new Error('AuthContext is undefined.');
   }
 
+  if (!auth.user) {
+    throw new Error('User is null.');
+  }
+
   return {
-    isLoggedIn: auth.user ? true : false,
     user: auth.user,
-    login: auth.login,
-    logout: auth.logout,
   };
 }

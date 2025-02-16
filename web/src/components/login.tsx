@@ -1,10 +1,10 @@
 import { login } from '@/api/auth';
 import { Input } from '@/components/ui/input';
-import { useAuth } from '@/hooks/auth';
+import { AuthContext } from '@/contexts/auth';
 import { extractErrorMessage } from '@/utils/errors';
 import { useMutation } from '@tanstack/react-query';
 import { AlertCircle } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useContext, useState } from 'react';
 import MigIcon96 from '../assets/mig-96.svg';
 import Center from './center';
 import { Alert, AlertDescription } from './ui/alert';
@@ -15,12 +15,12 @@ export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const { login: authLogin } = useAuth();
+  const auth = useContext(AuthContext);
 
   const mutation = useMutation({
     mutationFn: () => login(username, password),
     onSuccess: ({ data }) => {
-      authLogin(data);
+      auth?.login(data);
     },
     onError: (error) => {
       setErrorMsg(extractErrorMessage(error));

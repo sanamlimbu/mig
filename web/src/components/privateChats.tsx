@@ -1,6 +1,6 @@
-import { getPrivateMessages } from '@/api/user';
+import { getRecentPrivateMessages } from '@/api/user';
 import { useAuth } from '@/hooks/auth';
-import { PrivateMessage, User } from '@/types';
+import { Message, User } from '@/types';
 import { PersonIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -14,13 +14,9 @@ export default function PrivateChats() {
   const [recipient, setRecipient] = useState<User>();
 
   const { isPending, isError, data, error } = useQuery({
-    queryKey: ['private-messages'],
-    queryFn: () => {
-      if (user === null) {
-        return undefined;
-      }
-      return getPrivateMessages(user.id, { page: 1, page_size: 40 });
-    },
+    queryKey: [user.id, 'recent-private-messages'],
+    queryFn: () =>
+      getRecentPrivateMessages(user.id, { page: 1, page_size: 40 }),
   });
 
   const handleSearchTermChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,10 +29,6 @@ export default function PrivateChats() {
 
   if (isError) {
     return <div>{error.message};</div>;
-  }
-
-  if (user === null) {
-    return <div>{'error'}</div>;
   }
 
   return (
@@ -53,7 +45,7 @@ export default function PrivateChats() {
         </div>
         <ScrollArea className="flex-grow">
           <div>
-            {data?.data.map((msg) => (
+            {data?.map((msg) => (
               <div
                 key={msg.id}
                 className="cursor-pointer hover:bg-slate-100 w-full"
@@ -77,8 +69,8 @@ export default function PrivateChats() {
 
 interface PrivateChatItemProps {
   user: User;
-  message: PrivateMessage;
-  updateRecipient: (recipient: User) => void;
+  message: Message;
+  updateRecipient: (recipient: User | undefined) => void;
 }
 
 function PrivateChatItem({
@@ -86,22 +78,8 @@ function PrivateChatItem({
   message,
   updateRecipient,
 }: PrivateChatItemProps) {
-  const recipient: User =
-    user.username === message.recipient_username
-      ? {
-          id: message.sender_id,
-          username: message.sender_username,
-          email: message.sender_email,
-          workflow_state: message.sender_workflow_state,
-          avatar_url: '',
-        }
-      : {
-          id: message.recipient_id,
-          username: message.recipient_username,
-          email: message.recipient_email,
-          workflow_state: message.recipient_workflow_state,
-          avatar_url: '',
-        };
+  const recipient =
+    user.id === message.sender_id ? message.recipient : message.sender;
 
   const convetDateToFormattedString = (str: string) => {
     const date = new Date(str);
@@ -121,7 +99,7 @@ function PrivateChatItem({
       <div className="flex items-center gap-4">
         <Avatar>
           <div className="rounded-full w-10 h-10 flex-shrink-0 bg-red-200 flex items-center justify-center">
-            {recipient.avatar_url ? (
+            {recipient?.avatar_url ? (
               <AvatarImage src={recipient.avatar_url} />
             ) : (
               <PersonIcon className="w-7 h-7" />
@@ -130,7 +108,7 @@ function PrivateChatItem({
         </Avatar>
         <div className="flex-1 min-w-0">
           <div className="flex justify-between">
-            <p className="font-bold text-sm">{recipient.username}</p>
+            <p className="font-bold text-sm">{recipient?.username}</p>
             <p className="text-xs">
               {convetDateToFormattedString(message.created_at)}
             </p>

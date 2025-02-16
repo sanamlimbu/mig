@@ -322,8 +322,9 @@ func (q *Queries) GetPrivateConversation(ctx context.Context, arg GetPrivateConv
 	return items, nil
 }
 
-const getPrivateMessages = `-- name: GetPrivateMessages :many
-SELECT m.id, m.sender_id, m.recipient_id, m.chatroom_id, m.workflow_state, m.message_type, m.content, m.is_read, m.created_at, m.updated_at, m.deleted_at,
+const getRecentUniquePrivateMessages = `-- name: GetRecentUniquePrivateMessages :many
+SELECT DISTINCT ON (LEAST(m.sender_id, m.recipient_id), GREATEST(m.sender_id, m.recipient_id))
+  m.id, m.sender_id, m.recipient_id, m.chatroom_id, m.workflow_state, m.message_type, m.content, m.is_read, m.created_at, m.updated_at, m.deleted_at,
   s.username sender_username,
   s.email sender_email,
   s.workflow_state sender_workflow_state,
@@ -334,18 +335,21 @@ FROM messages m
 JOIN users s ON s.id = m.sender_id
 JOIN users r ON r.id = m.recipient_id
 WHERE m.sender_id = $1 OR m.recipient_id = $1
-ORDER BY m.created_at DESC
+ORDER BY 
+  LEAST (m.sender_id, m.recipient_id),
+  GREATEST (m.sender_id, m.recipient_id),
+  m.created_at DESC
 LIMIT $3
 OFFSET $2
 `
 
-type GetPrivateMessagesParams struct {
+type GetRecentUniquePrivateMessagesParams struct {
 	UserID   pgtype.UUID
 	Page     int32
 	PageSize int32
 }
 
-type GetPrivateMessagesRow struct {
+type GetRecentUniquePrivateMessagesRow struct {
 	ID                     pgtype.UUID
 	SenderID               pgtype.UUID
 	RecipientID            pgtype.UUID
@@ -365,15 +369,15 @@ type GetPrivateMessagesRow struct {
 	RecipientWorkflowState UserWorkflowState
 }
 
-func (q *Queries) GetPrivateMessages(ctx context.Context, arg GetPrivateMessagesParams) ([]GetPrivateMessagesRow, error) {
-	rows, err := q.db.Query(ctx, getPrivateMessages, arg.UserID, arg.Page, arg.PageSize)
+func (q *Queries) GetRecentUniquePrivateMessages(ctx context.Context, arg GetRecentUniquePrivateMessagesParams) ([]GetRecentUniquePrivateMessagesRow, error) {
+	rows, err := q.db.Query(ctx, getRecentUniquePrivateMessages, arg.UserID, arg.Page, arg.PageSize)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetPrivateMessagesRow
+	var items []GetRecentUniquePrivateMessagesRow
 	for rows.Next() {
-		var i GetPrivateMessagesRow
+		var i GetRecentUniquePrivateMessagesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.SenderID,

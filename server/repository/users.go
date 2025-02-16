@@ -35,9 +35,9 @@ type UserRepository interface {
 	// Returned messages are paginated.
 	GetPrivateConversation(ctx context.Context, firstUserID, secondUserID string, pagination mig.Pagination) ([]mig.Message, error)
 
-	// GetPrivateMessages returns private messages of specified user.
+	// GetRecentPrivateMessages returns recent private messages of specified user.
 	// Returned messages are paginated.
-	GetPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.Message, error)
+	GetRecentPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.Message, error)
 
 	// GetUserByEmail returns user for specified email address.
 	GetUserByEmail(ctx context.Context, email string) (mig.User, error)
@@ -275,19 +275,19 @@ func (r *UserRepositoryPostgreSQL) GetPrivateConversation(ctx context.Context, f
 	return getPrivateMessagesFromDBModel(result), nil
 }
 
-func (r *UserRepositoryPostgreSQL) GetPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.Message, error) {
+func (r *UserRepositoryPostgreSQL) GetRecentPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.Message, error) {
 	userUUID, err := StringToUUID(userID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid uuid %s", userID)
 	}
 
-	arg := db.GetPrivateMessagesParams{
+	arg := db.GetRecentUniquePrivateMessagesParams{
 		UserID:   userUUID,
 		Page:     int32(pagination.Page),
 		PageSize: int32(pagination.PageSize),
 	}
 
-	msgs, err := r.queries.GetPrivateMessages(ctx, arg)
+	msgs, err := r.queries.GetRecentUniquePrivateMessages(ctx, arg)
 	if err != nil {
 		return nil, err
 	}
