@@ -51,10 +51,11 @@ func main() {
 				Aliases: []string{"s"},
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "addr", Value: "localhost:8080", EnvVars: []string{"MIG_ADDR"}, Usage: "host:port address of server"},
-					&cli.StringFlag{Name: "environment", Value: "dev", EnvVars: []string{"MIG_ENVIRONMENT"}, Usage: "deployment environnment (dev, prod) of server"},
+					&cli.StringFlag{Name: "environment", Value: "development", EnvVars: []string{"MIG_ENVIRONMENT"}, Usage: "deployment environnment (development, production) of server"},
 					&cli.StringFlag{Name: "jwt_secret", Value: "devdev", EnvVars: []string{"MIG_JWT_SECRET"}, Usage: "secret to sign jwt"},
 					&cli.StringFlag{Name: "app_name", Value: "mig-api-server", EnvVars: []string{"MIG_APP_NAME"}, Usage: "application name"},
 					&cli.StringFlag{Name: "nats_url", Value: "nats://my-nats-secret@localhost:4222", EnvVars: []string{"MIG_NATS_URL"}, Usage: "NATS url"},
+					&cli.StringFlag{Name: "allowed_origins", Value: "https://*,http://*", EnvVars: []string{"MIG_ALLOWED_ORIGINS"}, Usage: "CORS allowed origins"},
 
 					&cli.StringFlag{Name: "database_user", Value: "mig", EnvVars: []string{"MIG_DATABASE_USER"}, Usage: "database user"},
 					&cli.StringFlag{Name: "database_pass", Value: "devdev", EnvVars: []string{"MIG_DATABASE_PASS"}, Usage: "database pass"},
@@ -74,9 +75,7 @@ func main() {
 				Name:  "seed",
 				Usage: "seed database",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "addr", Value: "localhost:8080", EnvVars: []string{"MIG_ADDR"}, Usage: "host:port address of server"},
-					&cli.StringFlag{Name: "environment", Value: "dev", EnvVars: []string{"MIG_ENVIRONMENT"}, Usage: "deployment environnment (dev, prod) of server"},
-					&cli.StringFlag{Name: "jwt_secret", Value: "devdev", EnvVars: []string{"MIG_JWT_SECRET"}, Usage: "secret to sign jwt"},
+					&cli.StringFlag{Name: "environment", Value: "development", EnvVars: []string{"MIG_ENVIRONMENT"}, Usage: "deployment environnment (development, production) of server"},
 					&cli.StringFlag{Name: "app_name", Value: "mig-api-server", EnvVars: []string{"MIG_APP_NAME"}, Usage: "application name"},
 
 					&cli.StringFlag{Name: "database_user", Value: "mig", EnvVars: []string{"MIG_DATABASE_USER"}, Usage: "database user"},
@@ -110,7 +109,7 @@ func serve(c *cli.Context) error {
 
 	env := c.String("environment")
 	if env == "" {
-		return fmt.Errorf("missing env: MIG_ENV")
+		return fmt.Errorf("missing env: MIG_ENVIRONMENT")
 	}
 
 	jwtSecret := c.String("jwt_secret")
@@ -121,6 +120,11 @@ func serve(c *cli.Context) error {
 	natsUrl := c.String("nats_url")
 	if natsUrl == "" {
 		return fmt.Errorf("missing env: MIG_NATS_URL")
+	}
+
+	allowedOrigins := c.String("allowed_origins")
+	if allowedOrigins == "" {
+		return fmt.Errorf("missing env: MIG_ALLOWED_ORIGINS")
 	}
 
 	nats, err := messagebroker.NewNats(natsUrl)
@@ -184,7 +188,7 @@ func serve(c *cli.Context) error {
 		return err
 	}
 
-	router, err := api.NewHttpRouter(controller)
+	router, err := api.NewHttpRouter(controller, allowedOrigins)
 	if err != nil {
 		return err
 	}
@@ -221,6 +225,11 @@ func serve(c *cli.Context) error {
 }
 
 func connectPostgreSQL(c *cli.Context) (*pgxpool.Pool, error) {
+	env := c.String("environment")
+	if env == "" {
+		return nil, fmt.Errorf("missing env: MIG_ENVIRONMENT")
+	}
+
 	dbUser := c.String("database_user")
 	if dbUser == "" {
 		return nil, fmt.Errorf("missing env: MIG_DATABASE_USER")
@@ -259,6 +268,7 @@ func connectPostgreSQL(c *cli.Context) (*pgxpool.Pool, error) {
 		DbName:     dbName,
 		AppName:    appName,
 		AppVersion: version,
+		Env:        env,
 	}
 
 	pool, err := repository.NewPostgreSQLConnPool(c.Context, config)

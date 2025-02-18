@@ -20,12 +20,18 @@ type PostgreSQLConnPoolConfig struct {
 	DbName     string
 	AppName    string
 	AppVersion string
+	Env        string
 }
 
 func NewPostgreSQLConnPool(ctx context.Context, config PostgreSQLConnPoolConfig) (*pgxpool.Pool, error) {
 	params := url.Values{}
 
-	params.Add("sslmode", "disable")
+	if config.Env == "development" {
+		params.Add("sslmode", "disable")
+	} else {
+		params.Add("sslmode", "require")
+	}
+
 	params.Add("application_name", fmt.Sprintf("%s-%s", config.AppName, config.AppVersion))
 
 	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
@@ -45,6 +51,11 @@ func NewPostgreSQLConnPool(ctx context.Context, config PostgreSQLConnPoolConfig)
 	poolConfig.AfterConnect = RegisterDataTypes
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("failed to connect to PostgreSQL: %w", err)
+	}
 
 	return pool, err
 }

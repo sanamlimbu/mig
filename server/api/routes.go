@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -10,7 +11,7 @@ import (
 	"github.com/go-chi/cors"
 )
 
-func NewHttpRouter(c *HttpApiController) (*chi.Mux, error) {
+func NewHttpRouter(c *HttpApiController, allowedOrigins string) (*chi.Mux, error) {
 	if c == nil {
 		return nil, fmt.Errorf("missing http api controller")
 	}
@@ -25,7 +26,7 @@ func NewHttpRouter(c *HttpApiController) (*chi.Mux, error) {
 	r.Use(middleware.Timeout(time.Second * 15))
 
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://*", "http://*"},
+		AllowedOrigins:   strings.Split(allowedOrigins, ","),
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},

@@ -41,7 +41,7 @@ func (s *SeederPostgreSQL) Users(ctx context.Context, uuids []string) ([]mig.Use
 	for i := 0; i < len(uuids)-2; i++ {
 		username := s.faker.Username()
 
-		passwordHash, err := bcrypt.GenerateFromPassword([]byte(username), 8)
+		passwordHash, err := bcrypt.GenerateFromPassword([]byte(username+"123"), 8)
 		if err != nil {
 			return nil, err
 		}
