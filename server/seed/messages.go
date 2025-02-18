@@ -6,6 +6,7 @@ import (
 	"mig/db"
 	"mig/repository"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 )
@@ -37,13 +38,25 @@ func (s *SeederPostgreSQL) Messages(ctx context.Context, userUUIDs, chatroomUUID
 				return err
 			}
 
+			firstID, err := repository.StringToUUID(uuid.NewString())
+			if err != nil {
+				return err
+			}
+
+			secondID, err := repository.StringToUUID(uuid.NewString())
+			if err != nil {
+				return err
+			}
+
 			msgArgs := []db.CreateChatroomMessageParams{
 				{
+					ID:         firstID,
 					SenderID:   senderID,
 					ChatroomID: chatroomID,
 					Content:    s.faker.Paragraph(1, 2, 10, ","),
 				},
 				{
+					ID:         secondID,
 					SenderID:   senderID,
 					ChatroomID: chatroomID,
 					Content:    s.faker.Paragraph(1, 2, 10, ","),
@@ -71,7 +84,13 @@ func (s *SeederPostgreSQL) Messages(ctx context.Context, userUUIDs, chatroomUUID
 				return err
 			}
 
+			uuid, err := repository.StringToUUID(uuid.NewString())
+			if err != nil {
+				return err
+			}
+
 			msgArg := db.CreatePrivateMessageParams{
+				ID:          uuid,
 				SenderID:    senderID,
 				RecipientID: recipientID,
 				Content:     s.faker.Paragraph(1, 2, 10, ","),
@@ -96,7 +115,13 @@ func (s *SeederPostgreSQL) Messages(ctx context.Context, userUUIDs, chatroomUUID
 				return err
 			}
 
+			uuid, err := repository.StringToUUID(uuid.NewString())
+			if err != nil {
+				return err
+			}
+
 			msgArg := db.CreatePrivateMessageParams{
+				ID:          uuid,
 				SenderID:    senderID,
 				RecipientID: recipientID,
 				Content:     s.faker.Paragraph(1, 2, 10, ","),
