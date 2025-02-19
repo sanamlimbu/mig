@@ -2,7 +2,6 @@ package seed
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"mig"
 	"mig/db"
@@ -29,18 +28,16 @@ func (s *SeederPostgreSQL) Chatrooms(ctx context.Context, userUUIDs, chatroomUUI
 
 	chatrooms := make([]mig.Chatroom, len(userUUIDs))
 
+	chatroomNames := make(map[string]bool, len(userUUIDs))
+
 	for i, userUUID := range userUUIDs {
-		name := ""
+		var name string
 		for {
 			name = strings.ToLower(s.faker.Animal())
 
-			_, err := s.queries.GetChatroomByName(ctx, name)
-			if err != nil && errors.Is(err, sql.ErrNoRows) {
+			if !chatroomNames[name] {
+				chatroomNames[name] = true
 				break
-			}
-
-			if err != nil {
-				return nil, err
 			}
 		}
 
