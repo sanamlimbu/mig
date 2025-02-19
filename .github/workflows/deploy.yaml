@@ -45,6 +45,10 @@ jobs:
         with:
           name: mig-server
 
+      - name: Compress binary
+        run: |
+          tar -czf mig-server.tar.gz ./mig-server
+
       - name: Set up SSH for EC2
         run: |
           mkdir -p ~/.ssh
@@ -52,13 +56,14 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
 
-      - name: Copy binary to EC2
+      - name: Copy compressed binary to EC2
         run: |
-          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no ./mig-server $EC2_USER@$EC2_HOST:/home/$EC2_USER/
+          rsync -avz -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" ./mig-server.tar.gz $EC2_USER@$EC2_HOST:/home/$EC2_USER/
 
       - name: SSH into EC2 and start the server
         run: |
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'EOF'
+            tar -xzvf /home/$EC2_USER/mig-server.tar.gz -C /home/$EC2_USER/
             chmod +x mig-server
             sudo systemctl stop mig-server
             sudo cp mig-server /usr/local/bin/
