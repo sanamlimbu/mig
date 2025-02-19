@@ -61,5 +61,5 @@ func NewHttpRouter(c *HttpApiController, allowedOrigins string) (*chi.Mux, error
 func hello(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf(`{"message":"Hello World","time":"%s"}`, time.Now())))
+	w.Write([]byte(fmt.Sprintf(`{"message":"G'day World","time":"%s"}`, time.Now())))
 }
