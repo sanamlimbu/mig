@@ -23,7 +23,7 @@ jobs:
       - name: Build server binary
         working-directory: ./server
         run: |
-          GOOS=linux GOARCH=amd64 go build -v -o ../bin/mig-server ./cmd/server/main.go
+          GOOS=linux GOARCH=amd64 go build -ldflags "-w -s" -v -o ../bin/mig-server ./cmd/server/main.go
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
