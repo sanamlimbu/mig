@@ -104,7 +104,7 @@ type refreshTokenRequest struct {
 func (c *HttpApiController) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie(fingerprintCookie)
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		http.Error(w, "Missing user fingerprint cookie.", http.StatusBadRequest)
 		return
 	}
 
@@ -116,9 +116,19 @@ func (c *HttpApiController) RefreshToken(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if req.AccessToken == "" {
+		http.Error(w, "Missing access token.", http.StatusBadRequest)
+		return
+	}
+
+	if req.RefreshToken == "" {
+		http.Error(w, "Missing refresh token.", http.StatusBadRequest)
+		return
+	}
+
 	resp, err := c.authService.RefreshToken(r.Context(), req.AccessToken, req.RefreshToken, cookie.Value)
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		http.Error(w, "Unable to generate access token.", http.StatusUnauthorized)
 		return
 	}
 

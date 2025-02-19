@@ -1,5 +1,5 @@
 import { User } from '@/types';
-import { getAuthToken, setAuthToken } from '@/utils/auth';
+import { getAuthToken } from '@/utils/auth';
 import { axios } from '../axios';
 
 export interface AuthToken {
@@ -11,14 +11,14 @@ export interface AuthToken {
 }
 
 export async function login(username: string, password: string) {
-  const resp = await axios.post<AuthToken>('/login', {
+  const resp = await axios.post<AuthToken>('/auth/login', {
     username: username,
     password: password,
   });
   return resp.data;
 }
 
-export async function refreshAccessToken(): Promise<string> {
+export async function refreshAccessToken(): Promise<AuthToken> {
   const authToken = getAuthToken();
 
   if (!authToken) {
@@ -30,7 +30,5 @@ export async function refreshAccessToken(): Promise<string> {
     refresh_token: authToken.refresh_token,
   });
 
-  setAuthToken(response.data);
-
-  return response.data.access_token;
+  return response.data;
 }

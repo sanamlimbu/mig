@@ -5,7 +5,7 @@ import a, {
 } from 'axios';
 import { refreshAccessToken } from './api/auth';
 import { API_BASE_URL } from './constants';
-import { getAuthToken } from './utils/auth';
+import { getAuthToken, removeAuthToken, setAuthToken } from './utils/auth';
 
 export const axios = a.create({
   baseURL: API_BASE_URL,
@@ -34,37 +34,55 @@ const refreshAndRetryQueue: RetryQueueItem[] = [];
 let isRefreshing = false;
 
 axios.interceptors.response.use(
-  function (response) {
-    return response;
-  },
+  (response) => response,
   async function (error) {
     const originalRequest: AxiosRequestConfig = error.config;
-    if (!isRefreshing) {
-      isRefreshing = true;
-      try {
-        const newAccessToken = await refreshAccessToken();
 
-        error.config.headers['Authorization'] = `Bearer ${newAccessToken}`;
-
-        refreshAndRetryQueue.forEach(({ config, resolve, reject }) => {
-          axios
-            .request(config)
-            .then((response) => resolve(response))
-            .catch((err) => reject(err));
-        });
-
-        refreshAndRetryQueue.length = 0;
-
-        return axios(originalRequest);
-      } catch (error) {
-        throw new Error((error as AxiosError).message);
-      } finally {
-        isRefreshing = false;
-      }
+    if (error.response?.status !== 401) {
+      return Promise.reject(error);
     }
 
-    return new Promise<unknown>((resolve, reject) => {
-      refreshAndRetryQueue.push({ config: originalRequest, resolve, reject });
-    });
+    if (originalRequest.url?.includes('/auth/')) {
+      removeAuthToken();
+      return Promise.reject(error);
+    }
+
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        refreshAndRetryQueue.push({ config: originalRequest, resolve, reject });
+      });
+    }
+
+    isRefreshing = true;
+
+    try {
+      const authToken = await refreshAccessToken();
+      setAuthToken(authToken);
+
+      refreshAndRetryQueue.forEach(({ config, resolve, reject }) => {
+        if (config.headers) {
+          config.headers['Authorization'] = `Bearer ${authToken.access_token}`;
+        }
+
+        axios
+          .request(config)
+          .then((response) => resolve(response))
+          .catch((err) => reject(err));
+      });
+
+      refreshAndRetryQueue.length = 0;
+
+      if (originalRequest.headers) {
+        originalRequest.headers[
+          'Authorization'
+        ] = `Bearer ${authToken.access_token}`;
+      }
+
+      return axios(originalRequest);
+    } catch (error) {
+      throw new Error((error as AxiosError).message);
+    } finally {
+      isRefreshing = false;
+    }
   }
 );

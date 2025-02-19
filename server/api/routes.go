@@ -37,9 +37,11 @@ func NewHttpRouter(c *HttpApiController, allowedOrigins string) (*chi.Mux, error
 	r.HandleFunc("/ws", c.hub.serveWebSockets)
 
 	r.Route("/api", func(r chi.Router) {
-		r.Post("/login", c.Login)
-		r.Post("/signup", c.Signup)
-		r.Post("/refresh-token", c.RefreshToken)
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/login", c.Login)
+			r.Post("/signup", c.Signup)
+			r.Post("/refresh-token", c.RefreshToken)
+		})
 
 		r.With(paginate).Get("/users/{user_id}/friends", withAuth(c, c.GetFriends))
 		r.With(paginate).Get("/users/{user_id}/private-conversation/{recipient_id}", withAuth(c, c.GetPrivateConversation))
