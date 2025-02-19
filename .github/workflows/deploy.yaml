@@ -62,7 +62,7 @@ jobs:
 
       - name: SSH into EC2 and start the server
         run: |
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'EOF'
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST <<EOF
             tar -xzvf /home/$EC2_USER/mig-server.tar.gz -C /home/$EC2_USER/
             chmod +x mig-server
             sudo systemctl stop mig-server
