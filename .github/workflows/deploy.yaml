@@ -54,7 +54,7 @@ jobs:
 
       - name: Copy binary to EC2
         run: ~
-          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no ./mig-server $EC2_USER@$EC2_HOST:~
+          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no ./mig-server $EC2_USER@$EC2_HOST:/home/$EC2_USER/
 
       - name: SSH into EC2 and start the server
         run: |
