@@ -183,7 +183,7 @@ func serve(c *cli.Context) error {
 		}
 	}
 
-	controller, err := api.NewHttpApiController(hub, userService, chatroomService, authService)
+	controller, err := api.NewHttpApiController(hub, userService, chatroomService, authService, pool)
 	if err != nil {
 		return err
 	}

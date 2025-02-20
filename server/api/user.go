@@ -1,7 +1,9 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"mig"
 	"net/http"
 	"slices"
@@ -120,4 +122,62 @@ func (c *HttpApiController) GetRecentPrivateMessages(w http.ResponseWriter, r *h
 	if err := json.NewEncoder(w).Encode(result); err != nil {
 		mig.HttpErrorReply(w, mig.NewError(mig.ErrMsgUnableToJsonEnode, err, mig.InternalServerError))
 	}
+}
+
+type UpdateReadMessagesRequest struct {
+	RecipientID string `json:"recipient_id"`
+}
+
+func (c *HttpApiController) UpdateReadMessages(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "user_id")
+
+	var req UpdateReadMessagesRequest
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid input.", http.StatusBadRequest)
+		return
+	}
+
+	if req.RecipientID == "" {
+		http.Error(w, "Missing recipient id.", http.StatusBadRequest)
+		return
+	}
+
+	msg, err := c.userService.GetLastReadMessage(r.Context(), userID, req.RecipientID)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		query := `
+			UPDATE messages 
+			SET is_read = TRUE
+			WHERE sender_id = $1 AND recipient_id = $2;
+		`
+		_, err := c.db.Exec(r.Context(), query, userID, req.RecipientID)
+		if err != nil {
+			http.Error(w, "Unable to handle request.", http.StatusBadRequest)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if err != nil {
+		http.Error(w, "Unable to handle request.", http.StatusBadRequest)
+		return
+	}
+
+	query := `
+		UPDATE messages 
+		SET is_read = TRUE
+		WHERE sender_id = $1 AND 
+			recipient_id = $2 AND
+			created_at > $3;
+		`
+	_, err = c.db.Exec(r.Context(), query, userID, req.RecipientID, msg.CreatedAt)
+	if err != nil {
+		http.Error(w, "Unable to handle request.", http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

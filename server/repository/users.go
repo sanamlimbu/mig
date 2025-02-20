@@ -61,6 +61,8 @@ type UserRepository interface {
 	UpdateMessage(ctx context.Context, arg UpdateMessageParams) (mig.Message, error)
 
 	DeleteMessage(ctx context.Context, id string) error
+
+	GetLastReadMessage(ctx context.Context, senderID, recipientID string) (mig.Message, error)
 }
 
 type UserRepositoryPostgreSQL struct {
@@ -555,4 +557,33 @@ func (r *UserRepositoryPostgreSQL) DeleteMessage(ctx context.Context, id string)
 	})
 
 	return err
+}
+
+func (r *UserRepositoryPostgreSQL) GetLastReadMessage(ctx context.Context, senderID, recipientID string) (mig.Message, error) {
+	senderUuid, err := StringToUUID(senderID)
+	if err != nil {
+		return mig.Message{}, err
+	}
+
+	recipientUuid, err := StringToUUID(recipientID)
+	if err != nil {
+		return mig.Message{}, err
+	}
+
+	message, err := r.queries.GetLastReadMessage(ctx, db.GetLastReadMessageParams{
+		SenderID:    senderUuid,
+		RecipientID: recipientUuid,
+	})
+	if err != nil {
+		return mig.Message{}, err
+	}
+
+	return mig.Message{
+		ID:            message.ID.String(),
+		Content:       message.Content,
+		WorkflowState: mig.MessageWorkflowState(message.WorkflowState),
+		SenderID:      message.SenderID.String(),
+		RecipientID:   null.NewString(message.RecipientID.String(), message.RecipientID.Valid),
+		CreatedAt:     message.CreatedAt.Time,
+	}, nil
 }

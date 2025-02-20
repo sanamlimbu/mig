@@ -1,6 +1,7 @@
 import {
   getPrivateConversation,
   getPrivateConversationQueryKey,
+  updateReadMessages,
 } from '@/api/user';
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -13,7 +14,7 @@ import {
 } from '@/types';
 import { getAuthToken } from '@/utils/auth';
 import { DotsVerticalIcon, PersonIcon } from '@radix-ui/react-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import useWebSocket from 'react-use-websocket';
 import { v4 as uuidv4 } from 'uuid';
@@ -40,6 +41,15 @@ function GetPrivateChat({ user, recipient }: { user: User; recipient: User }) {
         page_size: 20,
       }),
   });
+  const mutation = useMutation({
+    mutationFn: () => updateReadMessages(user.id, recipient.id),
+  });
+
+  useEffect(() => {
+    if (data && data.some((d) => d.is_read === false)) {
+      mutation.mutate();
+    }
+  }, [data, mutation]);
 
   if (isPending) {
     return <div>Loading</div>;

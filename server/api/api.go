@@ -5,6 +5,8 @@ import (
 	"mig/auth"
 	"mig/chatroom"
 	"mig/user"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type HttpApiController struct {
@@ -12,9 +14,10 @@ type HttpApiController struct {
 	userService     *user.Service
 	chatroomService *chatroom.Service
 	authService     *auth.Service
+	db              *pgxpool.Pool
 }
 
-func NewHttpApiController(hub *WsHub, userService *user.Service, chatroomService *chatroom.Service, authService *auth.Service) (*HttpApiController, error) {
+func NewHttpApiController(hub *WsHub, userService *user.Service, chatroomService *chatroom.Service, authService *auth.Service, db *pgxpool.Pool) (*HttpApiController, error) {
 	if hub == nil {
 		return nil, fmt.Errorf("missing websocket hub")
 	}
@@ -31,11 +34,16 @@ func NewHttpApiController(hub *WsHub, userService *user.Service, chatroomService
 		return nil, fmt.Errorf("missing auth service")
 	}
 
+	if db == nil {
+		return nil, fmt.Errorf("missing pgxpool")
+	}
+
 	controller := &HttpApiController{
 		hub:             hub,
 		userService:     userService,
 		chatroomService: chatroomService,
 		authService:     authService,
+		db:              db,
 	}
 
 	return controller, nil

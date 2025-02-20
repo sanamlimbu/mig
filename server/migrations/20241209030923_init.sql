@@ -88,7 +88,16 @@ CREATE TABLE messages (
     deleted_at              TIMESTAMPTZ
 );
 
+CREATE TABLE last_read_messages (
+    sender_id               UUID NOT NULL REFERENCES users (id),    
+    recipient_id            UUID NOT NULL REFERENCES users (id),
+    message_id              UUID NOT NULL REFERENCES messages (id),
+    updated_at              TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (sender_id, recipient_id)
+);
+
 -- +goose Down
+DROP TABLE IF EXISTS last_read_messages;
 DROP TABLE IF EXISTS friendships;
 DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS chatrooms;

@@ -96,6 +96,13 @@ WHERE id = $1 LIMIT 1;
 SELECT * FROM refresh_tokens
 WHERE token = $1 LIMIT 1;
 
+-- name: GetLastReadMessage :one
+SELECT m.*
+FROM last_read_messages lrm
+JOIN messages m ON lrm.message_id = m.id
+WHERE lrm.sender_id = $1 AND lrm.recipient_id = $2
+LIMIT 1;
+
 -- name: CreateUser :one
 INSERT INTO users (
   id, email, username, password, workflow_state

@@ -322,3 +322,7 @@ func (s *Service) DeleteMessage(ctx context.Context, id string) error {
 
 	return nil
 }
+
+func (s *Service) GetLastReadMessage(ctx context.Context, senderID, recipientID string) (mig.Message, error) {
+	return s.userRepo.GetLastReadMessage(ctx, senderID, recipientID)
+}
