@@ -42,7 +42,7 @@ func (c *HttpApiController) Login(w http.ResponseWriter, r *http.Request) {
 		Name:     fingerprintCookie,
 		Value:    resp.UserFingerprint,
 		Path:     "/",
-		MaxAge:   (15 * 60) + 2, // Access token age is 15 minutes.
+		MaxAge:   (24 * 60 * 60) - 10, // Refresh token expires in 24 hours.
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteNoneMode,
@@ -97,8 +97,8 @@ func (c *HttpApiController) Signup(w http.ResponseWriter, r *http.Request) {
 }
 
 type refreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token"`
-	AccessToken  string `json:"access_token"`
+	RefreshToken    string `json:"refresh_token"`
+	UserFingerprint string `json:"user_fingerprint"`
 }
 
 func (c *HttpApiController) RefreshToken(w http.ResponseWriter, r *http.Request) {
@@ -116,8 +116,8 @@ func (c *HttpApiController) RefreshToken(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if req.AccessToken == "" {
-		http.Error(w, "Missing access token.", http.StatusBadRequest)
+	if req.UserFingerprint == "" {
+		http.Error(w, "Missing user fingerprint.", http.StatusBadRequest)
 		return
 	}
 
@@ -126,7 +126,7 @@ func (c *HttpApiController) RefreshToken(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	resp, err := c.authService.RefreshToken(r.Context(), req.AccessToken, req.RefreshToken, cookie.Value)
+	resp, err := c.authService.RefreshToken(r.Context(), req.RefreshToken, req.UserFingerprint, cookie.Value)
 	if err != nil {
 		http.Error(w, "Unable to generate access token.", http.StatusUnauthorized)
 		return
@@ -136,7 +136,7 @@ func (c *HttpApiController) RefreshToken(w http.ResponseWriter, r *http.Request)
 		Name:     fingerprintCookie,
 		Value:    resp.UserFingerprint,
 		Path:     "/",
-		MaxAge:   (15 * 60) + 2, // Access token age is 15 minutes.
+		MaxAge:   (24 * 60 * 60) - 10, // Refresh token expires in 24 hours.
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteNoneMode,

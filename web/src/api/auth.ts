@@ -4,8 +4,6 @@ import { axios } from '../axios';
 
 export interface AuthToken {
   access_token: string;
-  expires_at: number;
-  expires_in: string;
   refresh_token: string;
   user: User;
 }
@@ -25,7 +23,7 @@ export async function refreshAccessToken(): Promise<AuthToken> {
     throw new Error('Missing authentication token.');
   }
 
-  const response = await axios.post<AuthToken>('/refresh-token', {
+  const response = await axios.post<AuthToken>('/auth/refresh-token', {
     access_token: authToken.access_token,
     refresh_token: authToken.refresh_token,
   });

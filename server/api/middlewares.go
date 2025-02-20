@@ -63,8 +63,8 @@ func withAuth(c *HttpApiController, next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		valid, claims, err := c.authService.VerifyAccessToken(token)
-		if err != nil || !valid {
+		claims, err := c.authService.VerifyAccessToken(token)
+		if err != nil {
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}

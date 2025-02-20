@@ -44,6 +44,7 @@ axios.interceptors.response.use(
 
     if (originalRequest.url?.includes('/auth/')) {
       removeAuthToken();
+      window.location.reload();
       return Promise.reject(error);
     }
 

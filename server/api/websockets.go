@@ -386,13 +386,9 @@ func (c *Client) register(data []byte) error {
 		return err
 	}
 
-	valid, claims, err := c.hub.authService.VerifyAccessToken(msg.AccessToken)
+	claims, err := c.hub.authService.VerifyAccessToken(msg.AccessToken)
 	if err != nil {
 		return err
-	}
-
-	if !valid {
-		return fmt.Errorf("invalid access token")
 	}
 
 	user, err := c.hub.userService.GetUser(context.Background(), claims.UserID)
