@@ -91,3 +91,16 @@ web-install:
 .PHONY: web-watch
 web-watch:
 	cd ${WEB} && npm run dev
+
+.PHONY: build-web
+build-web:
+	@echo "Building React..."
+	cd ${WEB} && npm run build
+	
+.PHONY: build-server
+build-server:
+	@echo "Building Go..."
+	cd ${SERVER} && GOOS=linux GOARCH=amd64 go build -ldflags "-w -s" -v -o ../bin/mig-server ./cmd/server/main.go
+
+.PHONY: build
+build: build-web build-server
