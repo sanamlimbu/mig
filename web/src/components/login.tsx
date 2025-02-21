@@ -6,9 +6,9 @@ import { useMutation } from '@tanstack/react-query';
 import { AlertCircle } from 'lucide-react';
 import { FormEvent, useContext, useState } from 'react';
 import MigIcon96 from '../assets/mig-96.svg';
-import Center from './center';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
+import { CenterDiv } from './ui/center-div';
 import { Label } from './ui/label';
 
 export default function Login() {
@@ -45,7 +45,7 @@ export default function Login() {
   };
 
   return (
-    <Center>
+    <CenterDiv className="min-h-screen">
       <div className="w-full max-w-sm">
         <img src={MigIcon96} className="mb-4" />
         <form onSubmit={handleSubmit} className="max-w-md">
@@ -73,6 +73,17 @@ export default function Login() {
             Login
           </Button>
         </form>
+        <Alert className="py-2 px-2 text-sm max-w-sm bg-gray-100">
+          <AlertDescription className="flex">
+            <AlertCircle className="h-4 w-4 inline mr-2 mt-1" />
+            <p>
+              Username: <span className="font-medium">jack</span> and Password:{' '}
+              <span className="font-medium">jack123</span> <br />
+              Username: <span className="font-medium">rose</span> and Password:{' '}
+              <span className="font-medium">rose123</span>
+            </p>
+          </AlertDescription>
+        </Alert>
         {errorMsg && (
           <Alert variant="destructive" className="py-2 px-2 text-sm max-w-sm">
             <AlertDescription>
@@ -82,6 +93,6 @@ export default function Login() {
           </Alert>
         )}
       </div>
-    </Center>
+    </CenterDiv>
   );
 }
