@@ -5,8 +5,11 @@ import { PersonIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import ChatroomChat from './chatroomChat';
+import { AlertError } from './ui/alert-error';
 import { Avatar, AvatarImage } from './ui/avatar';
+import { CenterDiv } from './ui/center-div';
 import { Input } from './ui/input';
+import { LoadingSpinner } from './ui/loading-spinner';
 import { ScrollArea } from './ui/scroll-area';
 import { Separator } from './ui/separator';
 
@@ -21,15 +24,15 @@ export default function Chatrooms() {
   });
 
   if (isPending) {
-    return <div>Loading</div>;
+    return (
+      <CenterDiv>
+        <LoadingSpinner />
+      </CenterDiv>
+    );
   }
 
   if (isError) {
-    return <div>{error.message};</div>;
-  }
-
-  if (user === null) {
-    return <div>{'error'}</div>;
+    return <AlertError title="Error" message={error.message} />;
   }
 
   return (

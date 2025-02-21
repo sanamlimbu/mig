@@ -20,6 +20,9 @@ import { useEffect, useRef, useState } from 'react';
 import useWebSocket from 'react-use-websocket';
 import { v4 as uuidv4 } from 'uuid';
 import SendIcon from '../assets/send.svg';
+import { AlertError } from './ui/alert-error';
+import { CenterDiv } from './ui/center-div';
+import { LoadingSpinner } from './ui/loading-spinner';
 import { Textarea } from './ui/textarea';
 
 // https://github.com/radix-ui/primitives/discussions/990
@@ -67,14 +70,16 @@ function GetPrivateChat({ user, recipient }: { user: User; recipient: User }) {
     }
   }, [data, mutate, recipient.id]);
 
-  console.log('Testing...');
-
   if (isPending) {
-    return <div>Loading</div>;
+    return (
+      <CenterDiv>
+        <LoadingSpinner />
+      </CenterDiv>
+    );
   }
 
   if (isError) {
-    return <div>{error.message};</div>;
+    return <AlertError title="Error" message={error.message} />;
   }
 
   return <Chat user={user} recipient={recipient} data={data} />;

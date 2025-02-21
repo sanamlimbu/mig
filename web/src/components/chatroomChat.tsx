@@ -6,6 +6,9 @@ import { DotsVerticalIcon, PersonIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useRef } from 'react';
 import SendIcon from '../assets/send.svg';
+import { AlertError } from './ui/alert-error';
+import { CenterDiv } from './ui/center-div';
+import { LoadingSpinner } from './ui/loading-spinner';
 import { Textarea } from './ui/textarea';
 
 interface ChatroomProps {
@@ -27,11 +30,15 @@ export default function ChatroomChat({ user, chatroom }: ChatroomProps) {
   const handleSend = () => {};
 
   if (isPending) {
-    return <div>Loading</div>;
+    return (
+      <CenterDiv>
+        <LoadingSpinner />
+      </CenterDiv>
+    );
   }
 
   if (isError) {
-    return <div>{error.message};</div>;
+    return <AlertError title="Error" message={error.message} />;
   }
 
   if (user === null) {

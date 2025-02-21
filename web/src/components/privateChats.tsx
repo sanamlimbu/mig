@@ -13,8 +13,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import useWebSocket from 'react-use-websocket';
 import PrivateChat from './privateChat';
+import { AlertError } from './ui/alert-error';
 import { Avatar, AvatarImage } from './ui/avatar';
+import { CenterDiv } from './ui/center-div';
 import { Input } from './ui/input';
+import { LoadingSpinner } from './ui/loading-spinner';
 import { ScrollArea } from './ui/scroll-area';
 
 export default function PrivateChats() {
@@ -32,11 +35,15 @@ export default function PrivateChats() {
   };
 
   if (isPending) {
-    return <div>Loading</div>;
+    return (
+      <CenterDiv>
+        <LoadingSpinner />
+      </CenterDiv>
+    );
   }
 
   if (isError) {
-    return <div>{error.message};</div>;
+    return <AlertError title="Error" message={error.message} />;
   }
 
   return (
