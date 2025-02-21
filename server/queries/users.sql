@@ -129,9 +129,9 @@ RETURNING *;
 
 -- name: CreatePrivateMessage :one
 INSERT INTO messages (
- id, sender_id, recipient_id, content, workflow_state, message_type
+ id, sender_id, recipient_id, content, is_read, workflow_state, message_type
 ) VALUES (
-  $1, $2, $3, $4, 'created', 'private'
+  $1, $2, $3, $4, $5, 'created', 'private'
 )
 RETURNING *;
 

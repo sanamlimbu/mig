@@ -31,8 +31,11 @@ export async function getPrivateConversation(
   return resp.data;
 }
 
-export async function updateReadMessages(userID: string, recipientID: string) {
-  return await axios.post(`/users/${userID}/update-read-messages`, {
-    recipient_id: recipientID,
+export async function updateReadMessages(
+  senderID: string,
+  recipientID: string
+) {
+  return await axios.post(`/users/${recipientID}/update-read-messages`, {
+    sender_id: senderID,
   });
 }

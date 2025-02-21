@@ -125,7 +125,7 @@ func (c *HttpApiController) GetRecentPrivateMessages(w http.ResponseWriter, r *h
 }
 
 type UpdateReadMessagesRequest struct {
-	RecipientID string `json:"recipient_id"`
+	SenderID string `json:"sender_id"`
 }
 
 func (c *HttpApiController) UpdateReadMessages(w http.ResponseWriter, r *http.Request) {
@@ -139,19 +139,19 @@ func (c *HttpApiController) UpdateReadMessages(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if req.RecipientID == "" {
-		http.Error(w, "Missing recipient id.", http.StatusBadRequest)
+	if req.SenderID == "" {
+		http.Error(w, "Missing sender id.", http.StatusBadRequest)
 		return
 	}
 
-	msg, err := c.userService.GetLastReadMessage(r.Context(), userID, req.RecipientID)
+	msg, err := c.userService.GetLastReadMessage(r.Context(), req.SenderID, userID)
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		query := `
 			UPDATE messages 
 			SET is_read = TRUE
 			WHERE sender_id = $1 AND recipient_id = $2;
 		`
-		_, err := c.db.Exec(r.Context(), query, userID, req.RecipientID)
+		_, err := c.db.Exec(r.Context(), query, req.SenderID, userID)
 		if err != nil {
 			http.Error(w, "Unable to handle request.", http.StatusBadRequest)
 			return
@@ -173,7 +173,7 @@ func (c *HttpApiController) UpdateReadMessages(w http.ResponseWriter, r *http.Re
 			recipient_id = $2 AND
 			created_at > $3;
 		`
-	_, err = c.db.Exec(r.Context(), query, userID, req.RecipientID, msg.CreatedAt)
+	_, err = c.db.Exec(r.Context(), query, req.SenderID, userID, msg.CreatedAt)
 	if err != nil {
 		http.Error(w, "Unable to handle request.", http.StatusBadRequest)
 		return

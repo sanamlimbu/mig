@@ -7,7 +7,9 @@ import (
 	"mig/repository"
 
 	"github.com/google/uuid"
+
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 )
 
@@ -94,6 +96,7 @@ func (s *SeederPostgreSQL) Messages(ctx context.Context, userUUIDs, chatroomUUID
 				SenderID:    senderID,
 				RecipientID: recipientID,
 				Content:     s.faker.Paragraph(1, 2, 10, ","),
+				IsRead:      pgtype.Bool{Bool: false, Valid: true},
 			}
 
 			_, err = qtx.CreatePrivateMessage(ctx, msgArg)
@@ -125,6 +128,7 @@ func (s *SeederPostgreSQL) Messages(ctx context.Context, userUUIDs, chatroomUUID
 				SenderID:    senderID,
 				RecipientID: recipientID,
 				Content:     s.faker.Paragraph(1, 2, 10, ","),
+				IsRead:      pgtype.Bool{Bool: false, Valid: true},
 			}
 
 			_, err = qtx.CreatePrivateMessage(ctx, msgArg)

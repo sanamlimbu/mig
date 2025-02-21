@@ -5,7 +5,7 @@ import App from './App.tsx';
 import './index.css';
 import AuthProvider from './providers/auth.tsx';
 
-const queryClient = new QueryClient();
+export const queryClient = new QueryClient();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

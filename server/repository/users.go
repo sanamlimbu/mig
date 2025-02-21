@@ -226,6 +226,7 @@ func getPrivateMessageFromDBModel(msg db.GetPrivateConversationRow) mig.Message 
 		CreatedAt:     msg.CreatedAt.Time,
 		SenderID:      senderID,
 		RecipientID:   recipientID,
+		IsRead:        null.NewBool(msg.IsRead.Bool, msg.IsRead.Valid),
 		Sender: mig.User{
 			ID:            senderID,
 			Email:         msg.SenderEmail,
@@ -487,6 +488,7 @@ func (r *UserRepositoryPostgreSQL) SavePrivateMessage(ctx context.Context, arg S
 		SenderID:    senderID,
 		RecipientID: recipientID,
 		Content:     arg.Content,
+		IsRead:      pgtype.Bool{Bool: false, Valid: true},
 	})
 
 	if err != nil {

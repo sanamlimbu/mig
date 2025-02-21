@@ -6,6 +6,7 @@ import {
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { WS_BASE_URL } from '@/constants';
+import { queryClient } from '@/main';
 import {
   Message,
   MessageCreatedPayload,
@@ -41,15 +42,32 @@ function GetPrivateChat({ user, recipient }: { user: User; recipient: User }) {
         page_size: 20,
       }),
   });
-  const mutation = useMutation({
-    mutationFn: () => updateReadMessages(user.id, recipient.id),
+  const { mutate } = useMutation({
+    mutationFn: () => updateReadMessages(recipient.id, user.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getPrivateConversationQueryKey(user.id, recipient.id),
+      });
+    },
   });
+  const hasUpdatedRef = useRef(false);
 
   useEffect(() => {
-    if (data && data.some((d) => d.is_read === false)) {
-      mutation.mutate();
+    if (!data || hasUpdatedRef.current) {
+      return;
     }
-  }, [data, mutation]);
+
+    const hasSomeUnread = data.some(
+      (m) => m.sender_id === recipient.id && m.is_read === false
+    );
+
+    if (hasSomeUnread) {
+      mutate();
+      hasUpdatedRef.current = true;
+    }
+  }, [data, mutate, recipient.id]);
+
+  console.log('Testing...');
 
   if (isPending) {
     return <div>Loading</div>;
