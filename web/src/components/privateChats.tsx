@@ -140,11 +140,20 @@ function PrivateChatItem({
     }
     return acc;
   }, 0);
+
   const msg = messages[0];
 
   return (
     <div
-      onClick={() => updateRecipientSelection(recipient)}
+      onClick={() => {
+        setMessages(
+          messages.map((msg) => {
+            msg.is_read = true;
+            return msg;
+          })
+        );
+        updateRecipientSelection(recipient);
+      }}
       className="text-gray-800 p-4 max-w-md"
     >
       <div className="flex items-center gap-4">
