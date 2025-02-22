@@ -96,7 +96,7 @@ func (s *SeederPostgreSQL) Messages(ctx context.Context, userUUIDs, chatroomUUID
 				SenderID:    senderID,
 				RecipientID: recipientID,
 				Content:     s.faker.Paragraph(1, 2, 10, ","),
-				IsRead:      pgtype.Bool{Bool: false, Valid: true},
+				IsRead:      pgtype.Bool{Bool: true, Valid: true},
 			}
 
 			_, err = qtx.CreatePrivateMessage(ctx, msgArg)
@@ -128,7 +128,7 @@ func (s *SeederPostgreSQL) Messages(ctx context.Context, userUUIDs, chatroomUUID
 				SenderID:    senderID,
 				RecipientID: recipientID,
 				Content:     s.faker.Paragraph(1, 2, 10, ","),
-				IsRead:      pgtype.Bool{Bool: false, Valid: true},
+				IsRead:      pgtype.Bool{Bool: true, Valid: true},
 			}
 
 			_, err = qtx.CreatePrivateMessage(ctx, msgArg)
