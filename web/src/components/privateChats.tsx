@@ -106,6 +106,7 @@ function PrivateChatItem({
   selectedRecipient,
   updateRecipientSelection,
 }: PrivateChatItemProps) {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Partial<Message>[]>([message]);
   const { lastJsonMessage } = useWebSocket<WebSocketMessage>(WS_BASE_URL, {
     share: true,
@@ -133,8 +134,12 @@ function PrivateChatItem({
     }
   }, [lastJsonMessage, recipient.id, selectedRecipient?.id]);
 
-  const unreadMessages = messages.filter((msg) => !msg.is_read);
-
+  const unreadMessagesCount = messages.reduce((acc, msg) => {
+    if (msg.recipient_id === user.id && msg.is_read === false) {
+      return acc + 1;
+    }
+    return acc;
+  }, 0);
   const msg = messages[0];
 
   return (
@@ -161,9 +166,9 @@ function PrivateChatItem({
           </div>
           <div className="flex text-sm justify-between items-center gap-2">
             <p className="truncate flex-1">{msg.content}</p>
-            {unreadMessages.length > 0 && (
+            {unreadMessagesCount > 0 && (
               <p className="bg-green-500 text-white rounded-full min-w-[20px] h-5 flex items-center justify-center px-1 text-[10px]">
-                {unreadMessages.length}
+                {unreadMessagesCount}
               </p>
             )}
           </div>
