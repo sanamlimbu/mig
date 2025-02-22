@@ -63,6 +63,17 @@ export interface MessageCreatedPayload {
   recipient_id: string;
   content: string;
   type: MessageType;
+  created_at?: string;
+}
+
+export interface MessageUpdatedPayload {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  content: string;
+  type: MessageType;
+  created_at?: string;
+  updated_at?: string;
 }
 
 type WebSocketMessageType =

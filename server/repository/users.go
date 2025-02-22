@@ -309,6 +309,7 @@ func (r *UserRepositoryPostgreSQL) GetRecentPrivateMessages(ctx context.Context,
 			CreatedAt:     msg.CreatedAt.Time,
 			SenderID:      senderID,
 			RecipientID:   recipientID,
+			IsRead:        null.NewBool(msg.IsRead.Bool, msg.ID.Valid),
 			Sender: mig.User{
 				ID:            senderID,
 				Email:         msg.SenderEmail,

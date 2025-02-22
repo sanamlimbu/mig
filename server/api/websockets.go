@@ -286,15 +286,29 @@ loop:
 
 				if msg.Type == WebsocketMessageTypeMessageCreated {
 					if payload, ok := payload.(messagebroker.MessageCreatedTopicPayload); ok {
-						if err := c.hub.userService.SaveMessage(context.Background(), user.SaveMessageParams{
+						msg, err := c.hub.userService.SaveMessage(context.Background(), user.SaveMessageParams{
 							ID:          payload.ID,
 							SenderID:    payload.SenderID,
 							RecipientID: payload.RecipientID,
 							Content:     payload.Content,
 							Type:        payload.Type,
-						}); err != nil {
+						})
+						if err != nil {
 							log.Error().Msg(err.Error())
 							break loop
+						}
+
+						payload.CreatedAt = msg.CreatedAt
+
+						data, err := json.Marshal(payload)
+						if err != nil {
+							log.Error().Msg(err.Error())
+							break loop
+						}
+
+						err = c.hub.broker.Publish(messagebroker.TopicMessageCreated, data)
+						if err != nil {
+							log.Error().Msg(err.Error())
 						}
 					} else {
 						log.Error().Msg("unexpected payload type for message.created topic")
@@ -303,7 +317,7 @@ loop:
 
 				} else if msg.Type == WebsocketMessageTypeMessageUpdated {
 					if payload, ok := payload.(messagebroker.MessageUpdatedTopicPayload); ok {
-						_, err := c.hub.userService.UpdateMessage(context.Background(), user.UpdateMessageParams{
+						msg, err := c.hub.userService.UpdateMessage(context.Background(), user.UpdateMessageParams{
 							Content:       payload.Content,
 							WorkflowState: payload.WorflowState,
 							IsRead:        payload.IsRead,
@@ -311,6 +325,20 @@ loop:
 						if err != nil {
 							log.Error().Msg(err.Error())
 							break loop
+						}
+
+						payload.CreatedAt = msg.CreatedAt
+						payload.UpdatedAt = msg.UpdatedAt
+
+						data, err := json.Marshal(payload)
+						if err != nil {
+							log.Error().Msg(err.Error())
+							break loop
+						}
+
+						err = c.hub.broker.Publish(messagebroker.TopicMessageCreated, data)
+						if err != nil {
+							log.Error().Msg(err.Error())
 						}
 					} else {
 						log.Error().Msg("unexpected payload type for message.updated topic")
@@ -323,15 +351,15 @@ loop:
 							log.Error().Msg(err.Error())
 							break loop
 						}
+
+						err := c.hub.broker.Publish(payload.GetTopic(), data)
+						if err != nil {
+							log.Error().Msg(err.Error())
+						}
 					} else {
 						log.Error().Msg("unexpected payload type for message.deleted topic")
 						break loop
 					}
-				}
-
-				err = c.hub.broker.Publish(payload.GetTopic(), data)
-				if err != nil {
-					log.Error().Msg(err.Error())
 				}
 			}
 		default:

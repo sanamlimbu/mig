@@ -145,29 +145,29 @@ type SaveMessageParams struct {
 	Type        mig.MessageType
 }
 
-func (s *Service) SaveMessage(ctx context.Context, arg SaveMessageParams) error {
+func (s *Service) SaveMessage(ctx context.Context, arg SaveMessageParams) (mig.Message, error) {
 	if arg.Type == mig.MessageTypePrivate {
-		_, err := s.SavePrivateMessage(ctx, SavePrivateMessageParams{
+		msg, err := s.SavePrivateMessage(ctx, SavePrivateMessageParams{
 			ID:          arg.ID,
 			SenderID:    arg.SenderID,
 			RecipientID: arg.RecipientID,
 			Content:     arg.Content,
 		})
 
-		return err
+		return msg, err
 
 	} else if arg.Type == mig.MessageTypeChatroom {
-		_, err := s.SaveChatroomMessage(ctx, SaveChatroomMessageParams{
+		msg, err := s.SaveChatroomMessage(ctx, SaveChatroomMessageParams{
 			ID:         arg.ID,
 			SenderID:   arg.SenderID,
 			ChatroomID: arg.RecipientID,
 			Content:    arg.Content,
 		})
 
-		return err
+		return msg, err
 	}
 
-	return fmt.Errorf("invalid message type %s", arg.Type)
+	return mig.Message{}, fmt.Errorf("invalid message type %s", arg.Type)
 }
 
 type SavePrivateMessageParams struct {

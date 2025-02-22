@@ -113,6 +113,7 @@ function Chat({
         recipient_id: payload.recipient_id,
         sender_id: payload.sender_id,
         type: payload.type,
+        created_at: payload.created_at,
       };
       setMessages((prev) => {
         if (prev.some((msg) => msg.id === message.id)) return prev;

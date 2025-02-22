@@ -120,8 +120,8 @@ function PrivateChatItem({
         recipient_id: payload.recipient_id,
         sender_id: payload.sender_id,
         type: payload.type,
+        created_at: payload.created_at,
       };
-      console.log(message);
 
       if (message.sender_id === recipient.id) {
         if (message.sender_id === selectedRecipient?.id) {
@@ -134,6 +134,8 @@ function PrivateChatItem({
   }, [lastJsonMessage, recipient.id, selectedRecipient?.id]);
 
   const unreadMessages = messages.filter((msg) => !msg.is_read);
+
+  const msg = messages[0];
 
   return (
     <div
@@ -154,14 +156,16 @@ function PrivateChatItem({
           <div className="flex justify-between">
             <p className="font-bold text-sm">{recipient?.username}</p>
             <p className="text-xs">
-              {convertDateToFormattedString(message.created_at)}
+              {msg.created_at && convertDateToFormattedString(msg.created_at)}
             </p>
           </div>
           <div className="flex text-sm justify-between items-center gap-2">
-            <p className="truncate flex-1">{message.content}</p>
-            <p className="bg-green-500 text-white rounded-full min-w-[20px] h-5 flex items-center justify-center px-1 text-[10px]">
-              {unreadMessages.length}
-            </p>
+            <p className="truncate flex-1">{msg.content}</p>
+            {unreadMessages.length > 0 && (
+              <p className="bg-green-500 text-white rounded-full min-w-[20px] h-5 flex items-center justify-center px-1 text-[10px]">
+                {unreadMessages.length}
+              </p>
+            )}
           </div>
         </div>
       </div>

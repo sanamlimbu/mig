@@ -3,6 +3,7 @@ package messagebroker
 import (
 	"fmt"
 	"mig"
+	"time"
 
 	"github.com/guregu/null/v5"
 	"github.com/nats-io/nats.go"
@@ -41,6 +42,7 @@ type MessageCreatedTopicPayload struct {
 	RecipientID string          `json:"recipient_id"`
 	Content     string          `json:"content"`
 	Type        mig.MessageType `json:"type"`
+	CreatedAt   time.Time       `json:"created_at"`
 }
 
 func (m MessageCreatedTopicPayload) GetTopic() Topic {
@@ -54,6 +56,8 @@ type MessageUpdatedTopicPayload struct {
 	Content      string                   `json:"content"`
 	WorflowState mig.MessageWorkflowState `json:"workflow_state"`
 	IsRead       null.Bool                `json:"is_read"`
+	CreatedAt    time.Time                `json:"created_at"`
+	UpdatedAt    time.Time                `json:"updated_at"`
 }
 
 func (m MessageUpdatedTopicPayload) GetTopic() Topic {
