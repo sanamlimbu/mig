@@ -1,7 +1,6 @@
 import { getChatrooms } from '@/api/chatroom';
 import { useAuth } from '@/hooks/auth';
 import { Chatroom, User } from '@/types';
-import { PersonIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import ChatroomChat from './chatroomChat';
@@ -11,12 +10,11 @@ import { CenterDiv } from './ui/center-div';
 import { Input } from './ui/input';
 import { LoadingSpinner } from './ui/loading-spinner';
 import { ScrollArea } from './ui/scroll-area';
-import { Separator } from './ui/separator';
 
 export default function Chatrooms() {
   const { user } = useAuth();
-  const [chatroom, setChatroom] = useState<Chatroom>();
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedChatroom, setSelectedChatroom] = useState<Chatroom>();
 
   const { isPending, isError, data, error } = useQuery({
     queryKey: ['chatrooms', searchTerm],
@@ -52,12 +50,16 @@ export default function Chatrooms() {
             {data?.map((chatroom) => (
               <div
                 key={chatroom.id}
-                className="cursor-pointer hover:bg-slate-100 w-full"
+                className={`cursor-pointer hover:bg-slate-100 w-full ${
+                  selectedChatroom?.id === chatroom.id && 'bg-slate-100'
+                }`}
               >
                 <ChatroomItem
                   user={user}
                   chatroom={chatroom}
-                  updateChatroom={(chatroom) => setChatroom(chatroom)}
+                  updateChatroomSelection={(chatroom) =>
+                    setSelectedChatroom(chatroom)
+                  }
                 />
               </div>
             ))}
@@ -65,7 +67,9 @@ export default function Chatrooms() {
         </ScrollArea>
       </div>
       <div className="w-full flex-grow min-w-96">
-        {chatroom && <ChatroomChat user={user} chatroom={chatroom} />}
+        {selectedChatroom && (
+          <ChatroomChat user={user} chatroom={selectedChatroom} />
+        )}
       </div>
     </div>
   );
@@ -74,26 +78,30 @@ export default function Chatrooms() {
 interface ChatroomItemProps {
   user: User;
   chatroom: Chatroom;
-  updateChatroom: (chatroom: Chatroom) => void;
+  updateChatroomSelection: (chatroom: Chatroom | undefined) => void;
 }
 
-function ChatroomItem({ updateChatroom, chatroom }: ChatroomItemProps) {
+function ChatroomItem({
+  updateChatroomSelection,
+  chatroom,
+}: ChatroomItemProps) {
   return (
-    <div onClick={() => updateChatroom(chatroom)} className="text-gray-800 p-4">
+    <div
+      onClick={() => updateChatroomSelection(chatroom)}
+      className="text-gray-800 p-4"
+    >
       <div className="flex items-center gap-4">
         <Avatar>
           <div className="rounded-full w-10 h-10 flex-shrink-0 bg-red-200 flex items-center justify-center">
             {chatroom.avatar_url ? (
               <AvatarImage src={chatroom.avatar_url} />
             ) : (
-              <PersonIcon className="w-7 h-7" />
+              <span>{chatroom.name[0].toUpperCase()}</span>
             )}
           </div>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <Separator />
           <p className="font-bold text-sm my-1">{chatroom.name}</p>
-          <Separator />
         </div>
       </div>
     </div>

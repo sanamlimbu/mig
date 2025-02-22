@@ -2,6 +2,7 @@ import { getChatroomMessages } from '@/api/chatroom';
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Chatroom, User } from '@/types';
+import { convertDateToFormattedString } from '@/utils/helpers';
 import { DotsVerticalIcon, PersonIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useRef } from 'react';
@@ -71,18 +72,24 @@ export default function ChatroomChat({ user, chatroom }: ChatroomProps) {
             return (
               <div
                 key={msg.id}
-                className={`flex mb-4 ${
-                  isSentByUser ? 'justify-end' : 'justify-start'
-                }`}
+                className="flex items-center gap-2 mb-2.5 text-sm justify-between"
               >
                 <div
-                  className={`max-w-sm px-4 py-2 rounded-lg ${
+                  className={`px-3 py-1 rounded-lg ${
                     isSentByUser
                       ? 'bg-cyan-600 text-white'
                       : 'bg-white text-gray-800'
                   }`}
                 >
-                  <p className="text-sm">{msg.content}</p>
+                  <p>{msg.content}</p>
+                </div>
+                <div className="text-xs">
+                  <p className="bg-slate-700 text-white px-1 rounded-sm inline-block truncate max-w-[100px]">
+                    {msg.sender?.username}
+                  </p>
+                  <p className="whitespace-nowrap">
+                    {convertDateToFormattedString(msg.created_at, true)}
+                  </p>
                 </div>
               </div>
             );

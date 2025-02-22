@@ -7,7 +7,7 @@ import {
   User,
   WebSocketMessage,
 } from '@/types';
-import { convetDateToFormattedString } from '@/utils/helpers';
+import { convertDateToFormattedString } from '@/utils/helpers';
 import { PersonIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -67,8 +67,7 @@ export default function PrivateChats() {
                 <div
                   key={msg.id}
                   className={`cursor-pointer hover:bg-slate-100 w-full ${
-                    selectedRecipient?.id === msg.recipient?.id &&
-                    'bg-slate-100'
+                    selectedRecipient?.id === recipient?.id && 'bg-slate-100'
                   }`}
                 >
                   <PrivateChatItem
@@ -155,7 +154,7 @@ function PrivateChatItem({
           <div className="flex justify-between">
             <p className="font-bold text-sm">{recipient?.username}</p>
             <p className="text-xs">
-              {convetDateToFormattedString(message.created_at)}
+              {convertDateToFormattedString(message.created_at)}
             </p>
           </div>
           <div className="flex text-sm justify-between items-center gap-2">

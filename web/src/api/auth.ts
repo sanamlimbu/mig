@@ -1,5 +1,7 @@
 import { User } from '@/types';
 import { getAuthToken } from '@/utils/auth';
+import { jwtDecode, JwtPayload } from 'jwt-decode';
+
 import { axios } from '../axios';
 
 export interface AuthToken {
@@ -23,9 +25,13 @@ export async function refreshAccessToken(): Promise<AuthToken> {
     throw new Error('Missing authentication token.');
   }
 
+  const decoded = jwtDecode<JwtPayload & { user_fingerprint: string }>(
+    authToken.access_token
+  );
+
   const response = await axios.post<AuthToken>('/auth/refresh-token', {
-    access_token: authToken.access_token,
     refresh_token: authToken.refresh_token,
+    user_fingerprint: decoded.user_fingerprint,
   });
 
   return response.data;
