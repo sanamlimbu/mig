@@ -28,28 +28,47 @@ import { Textarea } from './ui/textarea';
 // https://github.com/radix-ui/primitives/discussions/990
 
 interface PrivateChatProps {
-  user: User;
+  sender: User;
   recipient: User;
+  onMessageSent: (message: Partial<Message>) => void;
 }
 
-export default function PrivateChat({ user, recipient }: PrivateChatProps) {
-  return <GetPrivateChat user={user} recipient={recipient} />;
+export default function PrivateChat({
+  sender,
+  recipient,
+  onMessageSent,
+}: PrivateChatProps) {
+  return (
+    <GetPrivateChat
+      sender={sender}
+      recipient={recipient}
+      onMessageSent={onMessageSent}
+    />
+  );
 }
 
-function GetPrivateChat({ user, recipient }: { user: User; recipient: User }) {
+function GetPrivateChat({
+  sender,
+  recipient,
+  onMessageSent,
+}: {
+  sender: User;
+  recipient: User;
+  onMessageSent: (message: Partial<Message>) => void;
+}) {
   const { isPending, isError, data, error } = useQuery({
-    queryKey: getPrivateConversationQueryKey(user.id, recipient.id),
+    queryKey: getPrivateConversationQueryKey(sender.id, recipient.id),
     queryFn: () =>
-      getPrivateConversation(user.id, recipient.id, {
+      getPrivateConversation(sender.id, recipient.id, {
         page: 1,
         page_size: 20,
       }),
   });
   const { mutate } = useMutation({
-    mutationFn: () => updateReadMessages(recipient.id, user.id),
+    mutationFn: () => updateReadMessages(recipient.id, sender.id),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: getPrivateConversationQueryKey(user.id, recipient.id),
+        queryKey: getPrivateConversationQueryKey(sender.id, recipient.id),
       });
     },
   });
@@ -82,17 +101,26 @@ function GetPrivateChat({ user, recipient }: { user: User; recipient: User }) {
     return <AlertError title="Error" message={error.message} />;
   }
 
-  return <Chat user={user} recipient={recipient} data={data} />;
+  return (
+    <Chat
+      sender={sender}
+      recipient={recipient}
+      data={data}
+      onMessageSent={onMessageSent}
+    />
+  );
 }
 
 function Chat({
-  user,
+  sender,
   recipient,
   data,
+  onMessageSent,
 }: {
-  user: User;
+  sender: User;
   recipient: User;
   data: Message[];
+  onMessageSent: (message: Partial<Message>) => void;
 }) {
   const [messages, setMessages] = useState<Partial<Message>[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -131,7 +159,7 @@ function Chat({
 
     const message: MessageCreatedPayload = {
       id: uuidv4(),
-      sender_id: user.id,
+      sender_id: sender.id,
       recipient_id: recipient.id,
       content: inputRef.current?.value,
       type: 'private',
@@ -146,6 +174,7 @@ function Chat({
     );
 
     setMessages((prev) => [message, ...prev]);
+    onMessageSent({ ...message });
   };
 
   return (
@@ -170,7 +199,7 @@ function Chat({
       <ScrollArea className="pr-2 bg-slate-50 flex-grow">
         <div className="px-3 pt-3 flex flex-col-reverse">
           {messages?.map((msg) => {
-            const isSentByUser = msg.sender_id === user.id;
+            const isSentByUser = msg.sender_id === sender.id;
             return (
               <div
                 key={msg.id}

@@ -117,23 +117,11 @@ func (s *Service) GetUser(ctx context.Context, userID string) (mig.User, error) 
 	return result, nil
 }
 
-// GetRecentPrivateMessages returns recent private messages of given user.
-// Result is paginated.
-func (s *Service) GetRecentPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.Message, error) {
-	_, err := s.userRepo.GetUser(ctx, userID)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		return nil, mig.NewError(fmt.Sprintf("not found user of id %s", userID), err, mig.NotFoundError)
-	}
-
-	if err != nil {
-		return nil, mig.NewError(fmt.Sprintf("unable to fetch user of id %s", userID), err, mig.InternalServerError)
-	}
-
-	result, err := s.userRepo.GetRecentPrivateMessages(ctx, userID, pagination)
+func (s *Service) GetRecentPrivateMessagesWithUniqueParticipant(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.Message, error) {
+	result, err := s.userRepo.GetRecentPrivateMessagesWithUniqueParticipant(ctx, userID, pagination)
 	if err != nil {
 		return nil, mig.NewError(fmt.Sprintf("unable to fetch private messages of user id %s", userID), err, mig.InternalServerError)
 	}
-
 	return result, nil
 }
 
@@ -325,4 +313,13 @@ func (s *Service) DeleteMessage(ctx context.Context, id string) error {
 
 func (s *Service) GetLastReadMessage(ctx context.Context, senderID, recipientID string) (mig.Message, error) {
 	return s.userRepo.GetLastReadMessage(ctx, senderID, recipientID)
+}
+
+func (s *Service) GetUnreadMessages(ctx context.Context, senderID, recipientID string) ([]mig.Message, error) {
+	result, err := s.userRepo.GetUnreadMessages(ctx, senderID, recipientID)
+	if err != nil {
+		return nil, mig.NewError(fmt.Sprintf("unable to fetch unread messages by user %s and sent by %s", recipientID, senderID), err, mig.InternalServerError)
+	}
+
+	return result, nil
 }

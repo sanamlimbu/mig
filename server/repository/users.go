@@ -35,9 +35,7 @@ type UserRepository interface {
 	// Returned messages are paginated.
 	GetPrivateConversation(ctx context.Context, firstUserID, secondUserID string, pagination mig.Pagination) ([]mig.Message, error)
 
-	// GetRecentPrivateMessages returns recent private messages of specified user.
-	// Returned messages are paginated.
-	GetRecentPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.Message, error)
+	GetRecentPrivateMessagesWithUniqueParticipant(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.Message, error)
 
 	// GetUserByEmail returns user for specified email address.
 	GetUserByEmail(ctx context.Context, email string) (mig.User, error)
@@ -63,6 +61,8 @@ type UserRepository interface {
 	DeleteMessage(ctx context.Context, id string) error
 
 	GetLastReadMessage(ctx context.Context, senderID, recipientID string) (mig.Message, error)
+
+	GetUnreadMessages(ctx context.Context, senderID, recipientID string) ([]mig.Message, error)
 }
 
 type UserRepositoryPostgreSQL struct {
@@ -278,19 +278,17 @@ func (r *UserRepositoryPostgreSQL) GetPrivateConversation(ctx context.Context, f
 	return getPrivateMessagesFromDBModel(result), nil
 }
 
-func (r *UserRepositoryPostgreSQL) GetRecentPrivateMessages(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.Message, error) {
+func (r *UserRepositoryPostgreSQL) GetRecentPrivateMessagesWithUniqueParticipant(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.Message, error) {
 	userUUID, err := StringToUUID(userID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid uuid %s", userID)
 	}
 
-	arg := db.GetRecentUniquePrivateMessagesParams{
+	msgs, err := r.queries.GetRecentPrivateMessagesWithUniqueParticipant(ctx, db.GetRecentPrivateMessagesWithUniqueParticipantParams{
 		UserID:   userUUID,
 		Page:     int32(pagination.Page),
 		PageSize: int32(pagination.PageSize),
-	}
-
-	msgs, err := r.queries.GetRecentUniquePrivateMessages(ctx, arg)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -589,4 +587,53 @@ func (r *UserRepositoryPostgreSQL) GetLastReadMessage(ctx context.Context, sende
 		RecipientID:   null.NewString(message.RecipientID.String(), message.RecipientID.Valid),
 		CreatedAt:     message.CreatedAt.Time,
 	}, nil
+}
+
+func (r *UserRepositoryPostgreSQL) GetUnreadMessages(ctx context.Context, senderID, recipientID string) ([]mig.Message, error) {
+	senderUUID, err := StringToUUID(senderID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid uuid %s", senderID)
+	}
+
+	recipientUUID, err := StringToUUID(recipientID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid uuid %s", recipientID)
+	}
+
+	messages, err := r.queries.GetUnreadMessages(ctx, db.GetUnreadMessagesParams{
+		SenderID:    senderUUID,
+		RecipientID: recipientUUID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]mig.Message, len(messages))
+
+	for i, msg := range messages {
+		result[i] = mig.Message{
+			ID:            UUIDToString(msg.ID),
+			Content:       msg.Content,
+			WorkflowState: mig.MessageWorkflowState(msg.WorkflowState),
+			Type:          mig.MessageType(msg.MessageType),
+			CreatedAt:     msg.CreatedAt.Time,
+			SenderID:      senderID,
+			RecipientID:   null.StringFrom(recipientID),
+			IsRead:        null.NewBool(msg.IsRead.Bool, msg.IsRead.Valid),
+			Sender: mig.User{
+				ID:            senderID,
+				Email:         msg.SenderEmail,
+				Username:      msg.SenderUsername,
+				WorkflowState: mig.UserWorkflowState(msg.SenderWorkflowState),
+			},
+			Recipient: mig.User{
+				ID:            recipientID,
+				Email:         msg.RecipientEmail,
+				Username:      msg.RecipientUsername,
+				WorkflowState: mig.UserWorkflowState(msg.RecipientWorkflowState),
+			},
+		}
+	}
+
+	return result, nil
 }

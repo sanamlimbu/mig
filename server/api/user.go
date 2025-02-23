@@ -104,19 +104,40 @@ func (c *HttpApiController) GetPrivateConversation(w http.ResponseWriter, r *htt
 	}
 }
 
-// GetRecentPrivateMessages handler returns recent private messages of user.
-// Result is paginated based on the provided `pagination` query parameters.
-// Pagination is optional: if not provided, default pagination settings will be used.
 func (c *HttpApiController) GetRecentPrivateMessages(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "user_id")
-
 	pagination := mig.NewPagination(r)
 
-	result, err := c.userService.GetRecentPrivateMessages(r.Context(), userID, pagination)
-
+	messages, err := c.userService.GetRecentPrivateMessagesWithUniqueParticipant(r.Context(), userID, pagination)
 	if err != nil {
 		mig.HttpErrorReply(w, err)
 		return
+	}
+
+	result := make([]struct {
+		Message        mig.Message   `json:"message"`
+		UnreadMessages []mig.Message `json:"unread_messages"`
+	}, len(messages))
+
+	for i, msg := range messages {
+		senderID := msg.SenderID
+		if msg.SenderID == userID {
+			senderID = msg.RecipientID.String
+		}
+
+		messages, err := c.userService.GetUnreadMessages(r.Context(), senderID, userID)
+		if err != nil {
+			mig.HttpErrorReply(w, err)
+			return
+		}
+
+		result[i] = struct {
+			Message        mig.Message   `json:"message"`
+			UnreadMessages []mig.Message `json:"unread_messages"`
+		}{
+			Message:        msg,
+			UnreadMessages: messages,
+		}
 	}
 
 	if err := json.NewEncoder(w).Encode(result); err != nil {
@@ -180,4 +201,19 @@ func (c *HttpApiController) UpdateReadMessages(w http.ResponseWriter, r *http.Re
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (c *HttpApiController) GetUnreadMessages(w http.ResponseWriter, r *http.Request) {
+	recipientID := chi.URLParam(r, "user_id")
+	senderID := chi.URLParam(r, "sender_id")
+
+	result, err := c.userService.GetUnreadMessages(r.Context(), senderID, recipientID)
+	if err != nil {
+		mig.HttpErrorReply(w, err)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		mig.HttpErrorReply(w, mig.NewError(mig.ErrMsgUnableToJsonEnode, err, mig.InternalServerError))
+	}
 }

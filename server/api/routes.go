@@ -45,6 +45,7 @@ func NewHttpRouter(c *HttpApiController, allowedOrigins string) (*chi.Mux, error
 
 		r.With(paginate).Get("/users/{user_id}/friends", withAuth(c, c.GetFriends))
 		r.With(paginate).Get("/users/{user_id}/private-conversation/{recipient_id}", withAuth(c, c.GetPrivateConversation))
+		r.Get("/users/{user_id}/unread-messages/{sender_id}", withAuth(c, c.GetUnreadMessages))
 		r.Get("/users/{user_id}", withAuth(c, c.GetUser))
 		r.With(paginate).Get("/users/{user_id}/recent-private-messages", withAuth(c, c.GetRecentPrivateMessages))
 		r.Post("/users/{user_id}/update-read-messages", withAuth(c, c.UpdateReadMessages))

@@ -13,7 +13,12 @@ export async function getRecentPrivateMessages(
   pagination: Pagination
 ) {
   const { page, page_size } = pagination;
-  const resp = await axios.get<Message[]>(
+  const resp = await axios.get<
+    {
+      message: Message;
+      unread_messages: Message[];
+    }[]
+  >(
     `/users/${userID}/recent-private-messages?page=${page}&page_size=${page_size}`
   );
   return resp.data;
@@ -38,4 +43,11 @@ export async function updateReadMessages(
   return await axios.post(`/users/${recipientID}/update-read-messages`, {
     sender_id: senderID,
   });
+}
+
+export async function getUnreadMessages(senderID: string, recipientID: string) {
+  const resp = await axios.get<Message[]>(
+    `/users/${recipientID}/unread-messages/${senderID}`
+  );
+  return resp.data;
 }

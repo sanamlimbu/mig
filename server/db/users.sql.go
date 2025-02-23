@@ -356,7 +356,7 @@ func (q *Queries) GetPrivateConversation(ctx context.Context, arg GetPrivateConv
 	return items, nil
 }
 
-const getRecentUniquePrivateMessages = `-- name: GetRecentUniquePrivateMessages :many
+const getRecentPrivateMessagesWithUniqueParticipant = `-- name: GetRecentPrivateMessagesWithUniqueParticipant :many
 SELECT id, sender_id, recipient_id, chatroom_id, workflow_state, message_type, content, is_read, created_at, updated_at, deleted_at, sender_username, sender_email, sender_workflow_state, recipient_username, recipient_email, recipient_workflow_state
 FROM (
   SELECT DISTINCT ON (LEAST(m.sender_id, m.recipient_id), GREATEST(m.sender_id, m.recipient_id))
@@ -381,13 +381,13 @@ LIMIT $3
 OFFSET $2
 `
 
-type GetRecentUniquePrivateMessagesParams struct {
+type GetRecentPrivateMessagesWithUniqueParticipantParams struct {
 	UserID   pgtype.UUID
 	Page     int32
 	PageSize int32
 }
 
-type GetRecentUniquePrivateMessagesRow struct {
+type GetRecentPrivateMessagesWithUniqueParticipantRow struct {
 	ID                     pgtype.UUID
 	SenderID               pgtype.UUID
 	RecipientID            pgtype.UUID
@@ -407,15 +407,15 @@ type GetRecentUniquePrivateMessagesRow struct {
 	RecipientWorkflowState UserWorkflowState
 }
 
-func (q *Queries) GetRecentUniquePrivateMessages(ctx context.Context, arg GetRecentUniquePrivateMessagesParams) ([]GetRecentUniquePrivateMessagesRow, error) {
-	rows, err := q.db.Query(ctx, getRecentUniquePrivateMessages, arg.UserID, arg.Page, arg.PageSize)
+func (q *Queries) GetRecentPrivateMessagesWithUniqueParticipant(ctx context.Context, arg GetRecentPrivateMessagesWithUniqueParticipantParams) ([]GetRecentPrivateMessagesWithUniqueParticipantRow, error) {
+	rows, err := q.db.Query(ctx, getRecentPrivateMessagesWithUniqueParticipant, arg.UserID, arg.Page, arg.PageSize)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetRecentUniquePrivateMessagesRow
+	var items []GetRecentPrivateMessagesWithUniqueParticipantRow
 	for rows.Next() {
-		var i GetRecentUniquePrivateMessagesRow
+		var i GetRecentPrivateMessagesWithUniqueParticipantRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.SenderID,
@@ -462,6 +462,87 @@ func (q *Queries) GetRefreshToken(ctx context.Context, token string) (RefreshTok
 		&i.Revoked,
 	)
 	return i, err
+}
+
+const getUnreadMessages = `-- name: GetUnreadMessages :many
+SELECT m.id, m.sender_id, m.recipient_id, m.chatroom_id, m.workflow_state, m.message_type, m.content, m.is_read, m.created_at, m.updated_at, m.deleted_at,
+  s.username sender_username,
+  s.email sender_email,
+  s.workflow_state sender_workflow_state,
+  r.username recipient_username,
+  r.email recipient_email,
+  r.workflow_state recipient_workflow_state
+FROM messages m
+JOIN users s ON s.id = m.sender_id
+JOIN users r ON r.id = m.recipient_id
+WHERE m.sender_id = $1 AND 
+  m.recipient_id = $2 AND
+  m.is_read = FALSE AND
+  m.deleted_at IS NULL 
+ORDER BY m.created_at DESC
+`
+
+type GetUnreadMessagesParams struct {
+	SenderID    pgtype.UUID
+	RecipientID pgtype.UUID
+}
+
+type GetUnreadMessagesRow struct {
+	ID                     pgtype.UUID
+	SenderID               pgtype.UUID
+	RecipientID            pgtype.UUID
+	ChatroomID             pgtype.UUID
+	WorkflowState          MessageWorkflowState
+	MessageType            MessageType
+	Content                string
+	IsRead                 pgtype.Bool
+	CreatedAt              pgtype.Timestamptz
+	UpdatedAt              pgtype.Timestamptz
+	DeletedAt              pgtype.Timestamptz
+	SenderUsername         string
+	SenderEmail            string
+	SenderWorkflowState    UserWorkflowState
+	RecipientUsername      string
+	RecipientEmail         string
+	RecipientWorkflowState UserWorkflowState
+}
+
+func (q *Queries) GetUnreadMessages(ctx context.Context, arg GetUnreadMessagesParams) ([]GetUnreadMessagesRow, error) {
+	rows, err := q.db.Query(ctx, getUnreadMessages, arg.SenderID, arg.RecipientID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUnreadMessagesRow
+	for rows.Next() {
+		var i GetUnreadMessagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SenderID,
+			&i.RecipientID,
+			&i.ChatroomID,
+			&i.WorkflowState,
+			&i.MessageType,
+			&i.Content,
+			&i.IsRead,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.SenderUsername,
+			&i.SenderEmail,
+			&i.SenderWorkflowState,
+			&i.RecipientUsername,
+			&i.RecipientEmail,
+			&i.RecipientWorkflowState,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getUser = `-- name: GetUser :one

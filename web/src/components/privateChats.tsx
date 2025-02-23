@@ -10,7 +10,7 @@ import {
 import { convertDateToFormattedString } from '@/utils/helpers';
 import { PersonIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import useWebSocket from 'react-use-websocket';
 import PrivateChat from './privateChat';
 import { AlertError } from './ui/alert-error';
@@ -22,16 +22,21 @@ import { ScrollArea } from './ui/scroll-area';
 
 export default function PrivateChats() {
   const { user } = useAuth();
-  const [selectedRecipient, setSelectedRecipient] = useState<User>();
-
+  const [currentRecipient, setCurrentRecipient] = useState<User>();
   const { isPending, isError, data, error } = useQuery({
     queryKey: [user.id, 'recent-private-messages'],
     queryFn: () =>
       getRecentPrivateMessages(user.id, { page: 1, page_size: 40 }),
   });
+  const currentRecipientRef = useRef(currentRecipient);
+  currentRecipientRef.current = currentRecipient;
 
   const handleSearchTermChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log(e);
+  };
+
+  const updateLastSentMessage = (message: Partial<Message>) => {
+    console.log(message);
   };
 
   if (isPending) {
@@ -45,6 +50,27 @@ export default function PrivateChats() {
   if (isError) {
     return <AlertError title="Error" message={error.message} />;
   }
+
+  const getRecipientFromMessage = (currentUser: User, message: Message) => {
+    if (currentUser.id === message.sender_id) {
+      return message.recipient;
+    }
+    return message.sender;
+  };
+
+  const removeDuplicateMessages = (messages: Message[]) => {
+    const result: Message[] = [];
+    const seen = new Set<string>();
+
+    for (let i = 0; i < messages.length; i++) {
+      if (!seen.has(messages[i].id)) {
+        seen.add(messages[i].id);
+        result.push(messages[i]);
+      }
+    }
+
+    return result;
+  };
 
   return (
     <div className="flex w-full overflow-x-auto">
@@ -60,23 +86,27 @@ export default function PrivateChats() {
         </div>
         <ScrollArea className="h-[100vh] flex-grow">
           <div>
-            {data?.map((msg) => {
-              const recipient =
-                user.id === msg.sender_id ? msg.recipient : msg.sender;
+            {data?.map((d) => {
+              const recipient = getRecipientFromMessage(user, d.message);
+              const messages =
+                d.unread_messages.length === 0
+                  ? [d.message]
+                  : removeDuplicateMessages([d.message, ...d.unread_messages]);
               return (
                 <div
-                  key={msg.id}
+                  key={d.message.id}
                   className={`cursor-pointer hover:bg-slate-100 w-full ${
-                    selectedRecipient?.id === recipient?.id && 'bg-slate-100'
+                    currentRecipient?.id === recipient?.id && 'bg-slate-100'
                   }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentRecipient(recipient);
+                  }}
                 >
                   <PrivateChatItem
                     recipient={recipient!}
-                    message={msg}
-                    selectedRecipient={selectedRecipient}
-                    updateRecipientSelection={(recipient) =>
-                      setSelectedRecipient(recipient)
-                    }
+                    recentMessages={messages}
+                    currentRecipientRef={currentRecipientRef}
                   />
                 </div>
               );
@@ -85,8 +115,12 @@ export default function PrivateChats() {
         </ScrollArea>
       </div>
       <div className="w-full flex-grow min-w-96">
-        {selectedRecipient && (
-          <PrivateChat user={user} recipient={selectedRecipient} />
+        {currentRecipient && (
+          <PrivateChat
+            sender={user}
+            recipient={currentRecipient}
+            onMessageSent={updateLastSentMessage}
+          />
         )}
       </div>
     </div>
@@ -95,19 +129,17 @@ export default function PrivateChats() {
 
 interface PrivateChatItemProps {
   recipient: User;
-  message: Message;
-  selectedRecipient: User | undefined;
-  updateRecipientSelection: (recipient: User | undefined) => void;
+  recentMessages: Message[];
+  currentRecipientRef: React.MutableRefObject<User | undefined>;
 }
 
 function PrivateChatItem({
   recipient,
-  message,
-  selectedRecipient,
-  updateRecipientSelection,
+  recentMessages,
+  currentRecipientRef,
 }: PrivateChatItemProps) {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<Partial<Message>[]>([message]);
+  const [messages, setMessages] = useState<Partial<Message>[]>(recentMessages);
   const { lastJsonMessage } = useWebSocket<WebSocketMessage>(WS_BASE_URL, {
     share: true,
   });
@@ -125,14 +157,14 @@ function PrivateChatItem({
       };
 
       if (message.sender_id === recipient.id) {
-        if (message.sender_id === selectedRecipient?.id) {
+        if (message.sender_id === currentRecipientRef.current?.id) {
           setMessages((prev) => [{ ...message, is_read: true }, ...prev]);
         } else {
           setMessages((prev) => [{ ...message, is_read: false }, ...prev]);
         }
       }
     }
-  }, [lastJsonMessage, recipient.id, selectedRecipient?.id]);
+  }, [currentRecipientRef, lastJsonMessage, recipient.id]);
 
   const unreadMessagesCount = messages.reduce((acc, msg) => {
     if (msg.recipient_id === user.id && msg.is_read === false) {
@@ -152,7 +184,6 @@ function PrivateChatItem({
             return msg;
           })
         );
-        updateRecipientSelection(recipient);
       }}
       className="text-gray-800 p-4 max-w-md"
     >

@@ -31,7 +31,7 @@ ORDER BY m.created_at DESC
 LIMIT @page_size
 OFFSET @page;
 
--- name: GetRecentUniquePrivateMessages :many
+-- name: GetRecentPrivateMessagesWithUniqueParticipant :many
 SELECT *
 FROM (
   SELECT DISTINCT ON (LEAST(m.sender_id, m.recipient_id), GREATEST(m.sender_id, m.recipient_id))
@@ -54,6 +54,23 @@ FROM (
 ORDER BY subquery.created_at DESC
 LIMIT @page_size
 OFFSET @page;
+
+-- name: GetUnreadMessages :many
+SELECT m.*,
+  s.username sender_username,
+  s.email sender_email,
+  s.workflow_state sender_workflow_state,
+  r.username recipient_username,
+  r.email recipient_email,
+  r.workflow_state recipient_workflow_state
+FROM messages m
+JOIN users s ON s.id = m.sender_id
+JOIN users r ON r.id = m.recipient_id
+WHERE m.sender_id = $1 AND 
+  m.recipient_id = $2 AND
+  m.is_read = FALSE AND
+  m.deleted_at IS NULL 
+ORDER BY m.created_at DESC;
 
 -- name: GetFriend :one
 SELECT u.*
