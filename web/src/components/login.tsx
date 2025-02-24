@@ -73,14 +73,14 @@ export default function Login() {
             Login
           </Button>
         </form>
-        <Alert className="py-2 px-2 text-sm max-w-sm bg-gray-100">
+        <Alert className="py-2 px-2 text-sm max-w-sm bg-gray-100 mb-4">
           <AlertDescription className="flex">
             <AlertCircle className="h-4 w-4 inline mr-2 mt-1" />
             <p>
               Username: <span className="font-medium">jack</span> and Password:{' '}
               <span className="font-medium">jack123</span> <br />
               Username: <span className="font-medium">rose</span> and Password:{' '}
-              <span className="font-medium">rose123</span>
+              <span className="font-medium">jill123</span>
             </p>
           </AlertDescription>
         </Alert>

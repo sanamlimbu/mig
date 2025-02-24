@@ -171,7 +171,7 @@ func serve(c *cli.Context) error {
 		return err
 	}
 
-	hub, err := api.NewWsHub(nats, authService, userService)
+	hub, err := api.NewWsHub(nats, authService, userService, chatroomService)
 	if err != nil {
 		return err
 	}

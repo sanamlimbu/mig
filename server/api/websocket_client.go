@@ -5,241 +5,53 @@ import (
 	"encoding/json"
 	"fmt"
 	"mig"
-	"mig/auth"
 	"mig/messagebroker"
 	"mig/user"
-	"net/http"
-	"slices"
-	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
 )
 
-// Reference - https://github.com/gorilla/websocket/blob/main/examples/chat/Client.go
-// Reference - https://devcenter.heroku.com/articles/websocket-security
-
-const (
-	// time allowed to write a message to the peer
-	writeWait = 10 * time.Second
-
-	// time allowed to read the next pong message from the peer
-	pongWait = 60 * time.Second
-
-	// send pings to peer with this period, must be less than pongWait
-	pingPeriod = (pongWait * 9) / 10
-
-	// maximum message size allowed from peer
-	maxMessageSize = 1024
-)
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  2048,
-	WriteBufferSize: 2048,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
-
 type Client struct {
-	hub  *WsHub
-	user *mig.User
-	conn *websocket.Conn
-	send chan []byte // buffered channel for outbound message
+	hub        *WsHub
+	user       *mig.User
+	chatroom   *mig.Chatroom
+	conn       *websocket.Conn
+	send       chan []byte
+	clientType clientType
 }
 
-const registerBufferSize int = 100
-const messageBufferSize int = 256
-
-type WsHub struct {
-	broker      messagebroker.MessageBroker
-	clients     sync.Map
-	register    chan *Client
-	unregister  chan *Client
-	authService *auth.Service
-	userService *user.Service
+type chatroomRegister struct {
+	client     *Client
+	chatroomID string
 }
 
-func NewWsHub(broker messagebroker.MessageBroker, authSerivce *auth.Service, userSerivce *user.Service) (*WsHub, error) {
-	if broker == nil {
-		return nil, fmt.Errorf("missing message broker")
-	}
-
-	if authSerivce == nil {
-		return nil, fmt.Errorf("missing auth service")
-	}
-
-	if userSerivce == nil {
-		return nil, fmt.Errorf("missing user service")
-	}
-
-	hub := &WsHub{
-		broker:      broker,
-		register:    make(chan *Client, registerBufferSize),
-		unregister:  make(chan *Client, registerBufferSize),
-		authService: authSerivce,
-		userService: userSerivce,
-	}
-
-	return hub, nil
+type chatroomUnregister struct {
+	client     *Client
+	chatroomID string
 }
 
-func (h *WsHub) Run(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case client := <-h.register:
-			h.addClient(client)
-		case client := <-h.unregister:
-			h.removeClient(client)
-		}
-	}
-}
-
-func (h *WsHub) addClient(client *Client) {
-	var clients []*Client
-
-	if client.user == nil {
-		return
-	}
-
-	userClients, ok := h.clients.Load(client.user.ID)
-	if ok {
-		clients = userClients.([]*Client)
-	}
-
-	clients = append(clients, client)
-
-	h.clients.Store(client.user.ID, clients)
-}
-
-func (h *WsHub) removeClient(client *Client) {
-	if client.user == nil {
-		return
-	}
-
-	userClients, ok := h.clients.Load(client.user.ID)
-	if !ok {
-		return
-	}
-
-	clients := userClients.([]*Client)
-
-	clients = slices.DeleteFunc(clients, func(c *Client) bool {
-		return c == client
-	})
-
-	if len(clients) == 0 {
-		h.clients.Delete(client.user.ID)
-	} else {
-		h.clients.Store(client.user.ID, clients)
-	}
-
-	close(client.send)
-}
-
-func (h *WsHub) serveWebSockets(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-
-	if err != nil {
-		log.Error().Msg(err.Error())
-		return
-	}
-
-	client := &Client{
-		hub:  h,
-		user: nil,
-		conn: conn,
-		send: make(chan []byte, messageBufferSize),
-	}
-
-	go client.read()
-	go client.write()
-}
-
-type WebsocketMessageType string
+type clientType string
 
 const (
-	WebsocketMessageTypeMessageCreated WebsocketMessageType = "message_created"
-	WebsocketMessageTypeMessageUpdated WebsocketMessageType = "message_updated"
-	WebsocketMessageTypeMessageDeleted WebsocketMessageType = "message_deleted"
-	WebsocketMessageTypeAuthentication WebsocketMessageType = "authentication"
+	clientTypeUser     clientType = "user"
+	clientTypeChatroom clientType = "chatroom"
 )
-
-type WebsocketMessage struct {
-	Type    WebsocketMessageType `json:"type"`
-	Payload any                  `json:"payload"`
-}
-
-func (h *WsHub) HandleBrokerMessage(topic messagebroker.Topic, msg []byte) error {
-	switch topic {
-	case messagebroker.TopicMessageCreated:
-		{
-			var payload messagebroker.MessageCreatedTopicPayload
-			if err := json.Unmarshal(msg, &payload); err != nil {
-				return err
-			}
-
-			send, err := json.Marshal(WebsocketMessage{
-				Type:    WebsocketMessageTypeMessageCreated,
-				Payload: payload,
-			})
-			if err != nil {
-				return err
-			}
-
-			if clients, ok := h.clients.Load(payload.RecipientID); ok {
-				for _, client := range clients.([]*Client) {
-					go func(client *Client) {
-						client.send <- send
-					}(client)
-				}
-			}
-		}
-	case messagebroker.TopicMessageUpdated:
-		{
-			var payload messagebroker.MessageUpdatedTopicPayload
-			if err := json.Unmarshal(msg, &payload); err != nil {
-				return err
-			}
-
-			if clients, ok := h.clients.Load(payload.RecipientID); ok {
-				for _, client := range clients.([]*Client) {
-					go func(client *Client) {
-						client.send <- msg
-					}(client)
-				}
-			}
-		}
-	case messagebroker.TopicMessageDeleted:
-		{
-			var payload messagebroker.MessageDeletedTopicPayload
-			if err := json.Unmarshal(msg, &payload); err != nil {
-				return err
-			}
-
-			if clients, ok := h.clients.Load(payload.RecipientID); ok {
-				for _, client := range clients.([]*Client) {
-					go func(client *Client) {
-						client.send <- msg
-					}(client)
-				}
-			}
-		}
-	default:
-		return fmt.Errorf("invalid message broker topic: %s", topic)
-	}
-
-	return nil
-}
 
 // read pongs message from websocket connection
 func (c *Client) read() {
 	defer func() {
-		c.hub.unregister <- c
-		_ = c.conn.Close()
+		if c.clientType == clientTypeChatroom {
+			c.hub.chatroomUnregister <- chatroomUnregister{
+				client:     c,
+				chatroomID: c.chatroom.ID,
+			}
+			_ = c.conn.Close()
+		} else {
+			c.hub.unregister <- c
+			_ = c.conn.Close()
+		}
 	}()
 
 	c.conn.SetReadLimit(maxMessageSize)
@@ -426,7 +238,14 @@ func (c *Client) register(data []byte) error {
 
 	c.user = &user
 
-	c.hub.register <- c
+	if c.clientType == clientTypeChatroom {
+		c.hub.chatroomRegister <- chatroomRegister{
+			client:     c,
+			chatroomID: c.chatroom.ID,
+		}
+	} else {
+		c.hub.register <- c
+	}
 
 	return nil
 }

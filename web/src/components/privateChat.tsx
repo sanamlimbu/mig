@@ -105,7 +105,7 @@ function ChatBox({
   useEffect(() => {
     if (lastJsonMessage && lastJsonMessage.type === 'message_created') {
       const payload = lastJsonMessage.payload as MessageCreatedPayload;
-      if (payload.recipient_id === sender.id) {
+      if (payload.sender_id === recipient.id) {
         const message: Partial<Message> = {
           id: payload.id,
           content: payload.content,
@@ -117,7 +117,7 @@ function ChatBox({
         setMessages((prev) => [message, ...prev]);
       }
     }
-  }, [lastJsonMessage, sender.id]);
+  }, [lastJsonMessage, recipient.id]);
 
   const handleSend = () => {
     if (!inputRef.current) {

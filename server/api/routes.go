@@ -34,7 +34,8 @@ func NewHttpRouter(c *HttpApiController, allowedOrigins string) (*chi.Mux, error
 		MaxAge:           300,
 	}))
 
-	r.HandleFunc("/ws", c.hub.serveWebSockets)
+	r.HandleFunc("/ws", c.hub.serveUserWebSocket)
+	r.HandleFunc("/ws/chatrooms/{chatroom_id}", c.hub.serveChatroomWebSocket)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
