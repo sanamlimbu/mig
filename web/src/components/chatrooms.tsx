@@ -53,14 +53,12 @@ export default function Chatrooms() {
                 className={`cursor-pointer hover:bg-slate-100 w-full ${
                   selectedChatroom?.id === chatroom.id && 'bg-slate-100'
                 }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedChatroom(chatroom);
+                }}
               >
-                <ChatroomItem
-                  user={user}
-                  chatroom={chatroom}
-                  updateChatroomSelection={(chatroom) =>
-                    setSelectedChatroom(chatroom)
-                  }
-                />
+                <ChatroomItem user={user} chatroom={chatroom} />
               </div>
             ))}
           </div>
@@ -78,18 +76,11 @@ export default function Chatrooms() {
 interface ChatroomItemProps {
   user: User;
   chatroom: Chatroom;
-  updateChatroomSelection: (chatroom: Chatroom | undefined) => void;
 }
 
-function ChatroomItem({
-  updateChatroomSelection,
-  chatroom,
-}: ChatroomItemProps) {
+function ChatroomItem({ chatroom }: ChatroomItemProps) {
   return (
-    <div
-      onClick={() => updateChatroomSelection(chatroom)}
-      className="text-gray-800 p-4"
-    >
+    <div className="text-gray-800 p-4">
       <div className="flex items-center gap-4">
         <Avatar>
           <div className="rounded-full w-10 h-10 flex-shrink-0 bg-red-200 flex items-center justify-center">
