@@ -1,11 +1,8 @@
-import {
-  getPrivateConversation,
-  getPrivateConversationQueryKey,
-  updateReadMessages,
-} from '@/api/user';
+import { getPrivateConversation, updateReadMessages } from '@/api/user';
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { WS_BASE_URL } from '@/constants';
+import { useLastMessageSent } from '@/hooks/lastMessageSent';
 import { queryClient } from '@/main';
 import {
   Message,
@@ -30,62 +27,39 @@ import { Textarea } from './ui/textarea';
 interface PrivateChatProps {
   sender: User;
   recipient: User;
-  onMessageSent: (message: Partial<Message>) => void;
 }
 
-export default function PrivateChat({
-  sender,
-  recipient,
-  onMessageSent,
-}: PrivateChatProps) {
-  return (
-    <GetPrivateChat
-      sender={sender}
-      recipient={recipient}
-      onMessageSent={onMessageSent}
-    />
-  );
-}
-
-function GetPrivateChat({
-  sender,
-  recipient,
-  onMessageSent,
-}: {
-  sender: User;
-  recipient: User;
-  onMessageSent: (message: Partial<Message>) => void;
-}) {
+export default function PrivateChat({ sender, recipient }: PrivateChatProps) {
   const { isPending, isError, data, error } = useQuery({
-    queryKey: getPrivateConversationQueryKey(sender.id, recipient.id),
+    queryKey: [sender.id, recipient.id, 'private-conversation'],
     queryFn: () =>
       getPrivateConversation(sender.id, recipient.id, {
         page: 1,
         page_size: 20,
       }),
   });
+  const isUpdateReadMessagesCompletedRef = useRef(false);
   const { mutate } = useMutation({
     mutationFn: () => updateReadMessages(recipient.id, sender.id),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: getPrivateConversationQueryKey(sender.id, recipient.id),
+        queryKey: [sender.id, recipient.id, 'private-conversation'],
       });
+      isUpdateReadMessagesCompletedRef.current = true;
     },
   });
-  const hasUpdatedRef = useRef(false);
 
   useEffect(() => {
-    if (!data || hasUpdatedRef.current) {
+    if (!data || isUpdateReadMessagesCompletedRef.current) {
       return;
     }
 
-    const hasSomeUnread = data.some(
+    const hasSomeUnreadMessages = data.some(
       (m) => m.sender_id === recipient.id && m.is_read === false
     );
 
-    if (hasSomeUnread) {
+    if (hasSomeUnreadMessages) {
       mutate();
-      hasUpdatedRef.current = true;
     }
   }, [data, mutate, recipient.id]);
 
@@ -102,25 +76,18 @@ function GetPrivateChat({
   }
 
   return (
-    <Chat
-      sender={sender}
-      recipient={recipient}
-      data={data}
-      onMessageSent={onMessageSent}
-    />
+    <ChatBox sender={sender} recipient={recipient} recentMessages={data} />
   );
 }
 
-function Chat({
+function ChatBox({
   sender,
   recipient,
-  data,
-  onMessageSent,
+  recentMessages,
 }: {
   sender: User;
   recipient: User;
-  data: Message[];
-  onMessageSent: (message: Partial<Message>) => void;
+  recentMessages: Message[];
 }) {
   const [messages, setMessages] = useState<Partial<Message>[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -131,6 +98,9 @@ function Chat({
       shouldReconnect: () => !!getAuthToken(), // Prevent reconnection if no auth token.
     }
   );
+  const { setLastMessageSent } = useLastMessageSent();
+
+  useEffect(() => setMessages(recentMessages), [recentMessages]);
 
   useEffect(() => {
     if (lastJsonMessage && lastJsonMessage.type === 'message_created') {
@@ -143,14 +113,9 @@ function Chat({
         type: payload.type,
         created_at: payload.created_at,
       };
-      setMessages((prev) => {
-        if (prev.some((msg) => msg.id === message.id)) return prev;
-        return [message, ...prev];
-      });
+      setMessages((prev) => [message, ...prev]);
     }
   }, [lastJsonMessage]);
-
-  useEffect(() => setMessages(data), [data]);
 
   const handleSend = () => {
     if (!inputRef.current) {
@@ -174,7 +139,7 @@ function Chat({
     );
 
     setMessages((prev) => [message, ...prev]);
-    onMessageSent({ ...message });
+    setLastMessageSent({ ...message, created_at: new Date().toISOString() });
   };
 
   return (

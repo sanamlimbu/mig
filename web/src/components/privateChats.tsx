@@ -1,12 +1,15 @@
 import { getRecentPrivateMessages } from '@/api/user';
 import { WS_BASE_URL } from '@/constants';
 import { useAuth } from '@/hooks/auth';
+import { useLastMessageSent } from '@/hooks/lastMessageSent';
+import { LastMessageSentProvider } from '@/providers/lastMessageSent';
 import {
   Message,
   MessageCreatedPayload,
   User,
   WebSocketMessage,
 } from '@/types';
+import { getAuthToken } from '@/utils/auth';
 import { convertDateToFormattedString } from '@/utils/helpers';
 import { PersonIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -33,10 +36,6 @@ export default function PrivateChats() {
 
   const handleSearchTermChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log(e);
-  };
-
-  const updateLastSentMessage = (message: Partial<Message>) => {
-    console.log(message);
   };
 
   if (isPending) {
@@ -73,57 +72,58 @@ export default function PrivateChats() {
   };
 
   return (
-    <div className="flex w-full overflow-x-auto">
-      <div className="flex flex-col">
-        <div className="px-4 mt-4 max-w-md">
-          <p className="text-xl font-bold">Chats</p>
-          <Input
-            type="text"
-            className="mt-3 mb-2"
-            onChange={handleSearchTermChange}
-            placeholder="Search"
-          />
-        </div>
-        <ScrollArea className="h-[100vh] flex-grow">
-          <div>
-            {data?.map((d) => {
-              const recipient = getRecipientFromMessage(user, d.message);
-              const messages =
-                d.unread_messages.length === 0
-                  ? [d.message]
-                  : removeDuplicateMessages([d.message, ...d.unread_messages]);
-              return (
-                <div
-                  key={d.message.id}
-                  className={`cursor-pointer hover:bg-slate-100 w-full ${
-                    currentRecipient?.id === recipient?.id && 'bg-slate-100'
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCurrentRecipient(recipient);
-                  }}
-                >
-                  <PrivateChatItem
-                    recipient={recipient!}
-                    recentMessages={messages}
-                    currentRecipientRef={currentRecipientRef}
-                  />
-                </div>
-              );
-            })}
+    <LastMessageSentProvider>
+      <div className="flex w-full overflow-x-auto">
+        <div className="flex flex-col">
+          <div className="px-4 mt-4 max-w-md">
+            <p className="text-xl font-bold">Chats</p>
+            <Input
+              type="text"
+              className="mt-3 mb-2"
+              onChange={handleSearchTermChange}
+              placeholder="Search"
+            />
           </div>
-        </ScrollArea>
+          <ScrollArea className="h-[100vh] flex-grow">
+            <div>
+              {data?.map((d) => {
+                const recipient = getRecipientFromMessage(user, d.message);
+                const messages =
+                  d.unread_messages.length === 0
+                    ? [d.message]
+                    : removeDuplicateMessages([
+                        d.message,
+                        ...d.unread_messages,
+                      ]);
+                return (
+                  <div
+                    key={d.message.id}
+                    className={`cursor-pointer hover:bg-slate-100 w-full ${
+                      currentRecipient?.id === recipient?.id && 'bg-slate-100'
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentRecipient(recipient);
+                    }}
+                  >
+                    <PrivateChatItem
+                      recipient={recipient!}
+                      recentMessages={messages}
+                      currentRecipientRef={currentRecipientRef}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        </div>
+        <div className="w-full flex-grow min-w-96">
+          {currentRecipient && (
+            <PrivateChat sender={user} recipient={currentRecipient} />
+          )}
+        </div>
       </div>
-      <div className="w-full flex-grow min-w-96">
-        {currentRecipient && (
-          <PrivateChat
-            sender={user}
-            recipient={currentRecipient}
-            onMessageSent={updateLastSentMessage}
-          />
-        )}
-      </div>
-    </div>
+    </LastMessageSentProvider>
   );
 }
 
@@ -139,9 +139,11 @@ function PrivateChatItem({
   currentRecipientRef,
 }: PrivateChatItemProps) {
   const { user } = useAuth();
+  const { lastMessageSent } = useLastMessageSent();
   const [messages, setMessages] = useState<Partial<Message>[]>(recentMessages);
   const { lastJsonMessage } = useWebSocket<WebSocketMessage>(WS_BASE_URL, {
     share: true,
+    shouldReconnect: () => !!getAuthToken(), // Prevent reconnection if no auth token.
   });
 
   useEffect(() => {
@@ -173,17 +175,33 @@ function PrivateChatItem({
     return acc;
   }, 0);
 
-  const msg = messages[0];
+  const getFirstMessage = (
+    recipient: User,
+    lastMessageSent: Partial<Message> | undefined,
+    recentMessages: Partial<Message>[]
+  ) => {
+    if (lastMessageSent?.recipient_id !== recipient.id) {
+      return recentMessages[0];
+    }
+
+    const sortedMessages = [lastMessageSent, ...recentMessages].sort(
+      (a, b) =>
+        new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime()
+    );
+
+    return sortedMessages[0];
+  };
+
+  const message = getFirstMessage(recipient, lastMessageSent, messages);
 
   return (
     <div
       onClick={() => {
-        setMessages(
-          messages.map((msg) => {
-            msg.is_read = true;
-            return msg;
-          })
-        );
+        const readMessages = messages.map((m) => ({
+          ...m,
+          is_read: true,
+        }));
+        setMessages(readMessages);
       }}
       className="text-gray-800 p-4 max-w-md"
     >
@@ -201,11 +219,12 @@ function PrivateChatItem({
           <div className="flex justify-between">
             <p className="font-bold text-sm">{recipient?.username}</p>
             <p className="text-xs">
-              {msg.created_at && convertDateToFormattedString(msg.created_at)}
+              {message.created_at &&
+                convertDateToFormattedString(message.created_at)}
             </p>
           </div>
           <div className="flex text-sm justify-between items-center gap-2">
-            <p className="truncate flex-1">{msg.content}</p>
+            <p className="truncate flex-1">{message.content}</p>
             {unreadMessagesCount > 0 && (
               <p className="bg-green-500 text-white rounded-full min-w-[20px] h-5 flex items-center justify-center px-1 text-[10px]">
                 {unreadMessagesCount}
