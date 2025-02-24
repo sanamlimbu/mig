@@ -42,16 +42,8 @@ const (
 // read pongs message from websocket connection
 func (c *Client) read() {
 	defer func() {
-		if c.clientType == clientTypeChatroom {
-			c.hub.chatroomUnregister <- chatroomUnregister{
-				client:     c,
-				chatroomID: c.chatroom.ID,
-			}
-			_ = c.conn.Close()
-		} else {
-			c.hub.unregister <- c
-			_ = c.conn.Close()
-		}
+		c.hub.unregister <- c
+		_ = c.conn.Close()
 	}()
 
 	c.conn.SetReadLimit(maxMessageSize)
@@ -237,15 +229,7 @@ func (c *Client) register(data []byte) error {
 	}
 
 	c.user = &user
-
-	if c.clientType == clientTypeChatroom {
-		c.hub.chatroomRegister <- chatroomRegister{
-			client:     c,
-			chatroomID: c.chatroom.ID,
-		}
-	} else {
-		c.hub.register <- c
-	}
+	c.hub.register <- c
 
 	return nil
 }

@@ -105,7 +105,7 @@ function ChatBox({
   useEffect(() => {
     if (lastJsonMessage && lastJsonMessage.type === 'message_created') {
       const payload = lastJsonMessage.payload as MessageCreatedPayload;
-      if (payload.sender_id === recipient.id) {
+      if (payload.type === 'private' && payload.sender_id === recipient.id) {
         const message: Partial<Message> = {
           id: payload.id,
           content: payload.content,

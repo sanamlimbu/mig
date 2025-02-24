@@ -168,6 +168,7 @@ FROM messages m
 JOIN chatrooms c ON m.chatroom_id = c.id
 JOIN users u ON u.id = m.sender_id
 WHERE c.id = $1
+ORDER BY m.created_at DESC
 `
 
 type GetChatroomMessagesRow struct {

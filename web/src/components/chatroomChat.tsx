@@ -2,6 +2,7 @@ import { getChatroomMessages } from '@/api/chatroom';
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { WS_BASE_URL } from '@/constants';
+import { useAuth } from '@/hooks/auth';
 import {
   Chatroom,
   Message,
@@ -9,7 +10,6 @@ import {
   User,
   WebSocketMessage,
 } from '@/types';
-import { getAuthToken } from '@/utils/auth';
 import { convertDateToFormattedString } from '@/utils/helpers';
 import { DotsVerticalIcon, PersonIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -60,13 +60,20 @@ function ChatBox({
   chatroom: Chatroom;
   recentMessages: Message[];
 }) {
+  const { accessToken } = useAuth();
   const [messages, setMessages] = useState<Partial<Message>[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { sendJsonMessage, lastJsonMessage } = useWebSocket<WebSocketMessage>(
-    WS_BASE_URL,
+    `${WS_BASE_URL}/chatrooms/${chatroom.id}`,
     {
-      share: true,
-      shouldReconnect: () => !!getAuthToken(), // Prevent reconnection if no auth token.
+      onOpen: () => {
+        sendJsonMessage<WebSocketMessage>({
+          type: 'authentication',
+          payload: {
+            access_token: accessToken,
+          },
+        });
+      },
     }
   );
   useEffect(() => setMessages(recentMessages), [recentMessages]);
@@ -99,6 +106,8 @@ function ChatBox({
       content: inputRef.current?.value,
       type: 'chatroom',
     };
+
+    console.log(message);
 
     sendJsonMessage<WebSocketMessage>(
       {

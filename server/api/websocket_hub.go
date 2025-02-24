@@ -47,16 +47,14 @@ const registerBufferSize int = 100
 const messageBufferSize int = 256
 
 type WsHub struct {
-	broker             messagebroker.MessageBroker
-	clients            sync.Map
-	register           chan *Client
-	unregister         chan *Client
-	chatrooms          sync.Map
-	chatroomRegister   chan chatroomRegister
-	chatroomUnregister chan chatroomUnregister
-	authService        *auth.Service
-	userService        *user.Service
-	chatroomService    *chatroom.Service
+	broker          messagebroker.MessageBroker
+	clients         sync.Map
+	register        chan *Client
+	unregister      chan *Client
+	chatrooms       sync.Map
+	authService     *auth.Service
+	userService     *user.Service
+	chatroomService *chatroom.Service
 }
 
 func NewWsHub(broker messagebroker.MessageBroker, authSerivce *auth.Service, userSerivce *user.Service, chatroomService *chatroom.Service) (*WsHub, error) {
@@ -77,14 +75,12 @@ func NewWsHub(broker messagebroker.MessageBroker, authSerivce *auth.Service, use
 	}
 
 	hub := &WsHub{
-		broker:             broker,
-		register:           make(chan *Client, registerBufferSize),
-		unregister:         make(chan *Client, registerBufferSize),
-		chatroomRegister:   make(chan chatroomRegister, registerBufferSize),
-		chatroomUnregister: make(chan chatroomUnregister, registerBufferSize),
-		authService:        authSerivce,
-		userService:        userSerivce,
-		chatroomService:    chatroomService,
+		broker:          broker,
+		register:        make(chan *Client, registerBufferSize),
+		unregister:      make(chan *Client, registerBufferSize),
+		authService:     authSerivce,
+		userService:     userSerivce,
+		chatroomService: chatroomService,
 	}
 
 	return hub, nil
@@ -99,10 +95,6 @@ func (h *WsHub) Run(ctx context.Context) {
 			h.addClient(client)
 		case client := <-h.unregister:
 			h.removeClient(client)
-		case register := <-h.chatroomRegister:
-			h.addClientToChatroom(register.client, register.chatroomID)
-		case unregister := <-h.chatroomUnregister:
-			h.removeClientFromChatroom(unregister.client, unregister.chatroomID)
 		}
 	}
 }
@@ -114,29 +106,23 @@ func (h *WsHub) addClient(client *Client) {
 
 	var clients []*Client
 
-	existing, ok := h.clients.Load(client.user.ID)
-	if ok {
-		clients = existing.([]*Client)
+	if client.clientType == clientTypeChatroom {
+		existing, ok := h.chatrooms.Load(client.chatroom.ID)
+		if ok {
+			clients = existing.([]*Client)
+		}
+
+		clients = append(clients, client)
+		h.chatrooms.Store(client.chatroom.ID, clients)
+	} else {
+		existing, ok := h.clients.Load(client.user.ID)
+		if ok {
+			clients = existing.([]*Client)
+		}
+
+		clients = append(clients, client)
+		h.clients.Store(client.user.ID, clients)
 	}
-
-	clients = append(clients, client)
-	h.clients.Store(client.user.ID, clients)
-}
-
-func (h *WsHub) addClientToChatroom(client *Client, chatroomID string) {
-	if client.user == nil {
-		return
-	}
-
-	var clients []*Client
-
-	existing, ok := h.chatrooms.Load(chatroomID)
-	if ok {
-		clients = existing.([]*Client)
-	}
-
-	clients = append(clients, client)
-	h.chatrooms.Store(chatroomID, clients)
 }
 
 func (h *WsHub) removeClient(client *Client) {
@@ -144,46 +130,41 @@ func (h *WsHub) removeClient(client *Client) {
 		return
 	}
 
-	existing, ok := h.clients.Load(client.user.ID)
-	if !ok {
-		return
-	}
+	if client.clientType == clientTypeChatroom {
+		existing, ok := h.chatrooms.Load(client.chatroom.ID)
+		if !ok {
+			return
+		}
 
-	clients := existing.([]*Client)
+		clients := existing.([]*Client)
 
-	clients = slices.DeleteFunc(clients, func(c *Client) bool {
-		return c == client
-	})
+		clients = slices.DeleteFunc(clients, func(c *Client) bool {
+			return c == client
+		})
 
-	if len(clients) == 0 {
-		h.clients.Delete(client.user.ID)
+		if len(clients) == 0 {
+			h.chatrooms.Delete(client.chatroom.ID)
+		} else {
+			h.chatrooms.Store(client.chatroom.ID, clients)
+		}
+
 	} else {
-		h.clients.Store(client.user.ID, clients)
-	}
+		existing, ok := h.clients.Load(client.user.ID)
+		if !ok {
+			return
+		}
 
-	close(client.send)
-}
+		clients := existing.([]*Client)
 
-func (h *WsHub) removeClientFromChatroom(client *Client, chatroomID string) {
-	if client.user == nil {
-		return
-	}
+		clients = slices.DeleteFunc(clients, func(c *Client) bool {
+			return c == client
+		})
 
-	existing, ok := h.chatrooms.Load(chatroomID)
-	if !ok {
-		return
-	}
-
-	clients := existing.([]*Client)
-
-	clients = slices.DeleteFunc(clients, func(c *Client) bool {
-		return c == client
-	})
-
-	if len(clients) == 0 {
-		h.chatrooms.Delete(chatroomID)
-	} else {
-		h.chatrooms.Store(chatroomID, clients)
+		if len(clients) == 0 {
+			h.clients.Delete(client.user.ID)
+		} else {
+			h.clients.Store(client.user.ID, clients)
+		}
 	}
 
 	close(client.send)
