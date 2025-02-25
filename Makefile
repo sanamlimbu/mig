@@ -10,11 +10,11 @@ DB_PORT=5435
 DB_NAME=postgres
 DB_CONNECTION_STRING="postgres://$(DB_USER):$(DB_PASS)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable"
 
-DOCKERFILE_PATH=./Dockerfile.pg_cron
+DOCKERFILE_PATH=./Dockerfile
 
 .PHONY: docker-build
 docker-build:
-	docker build -t postgres-pg_cron:alpine-pg_cron -f $(DOCKERFILE_PATH) .
+	docker build -t postgres-alpine-pg_cron -f $(DOCKERFILE_PATH) .
 
 .PHONY: docker-create
 docker-create: docker-build
@@ -22,7 +22,7 @@ docker-create: docker-build
 		-e POSTGRES_USER=${DB_USER} \
 		-e POSTGRES_PASSWORD=${DB_PASS} \
 		-e POSTGRES_DB=${DB_NAME} \
-		postgres-pg_cron:alpine-pg_cron
+		postgres-alpine-pg_cron
 
 .PHONY: docker-start
 docker-start:
