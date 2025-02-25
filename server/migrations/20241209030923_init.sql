@@ -1,5 +1,6 @@
 -- +goose Up
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pg_cron";
 
 CREATE TYPE user_workflow_state AS ENUM (
     'active',
@@ -96,6 +97,13 @@ CREATE TABLE last_read_messages (
     PRIMARY KEY (sender_id, recipient_id)
 );
 
+-- Schedule a cron job to delete expired or revoked tokens at midnight.
+SELECT cron.schedule(
+    'delete_expired_tokens',
+    '0 0 * * *',
+    $$DELETE FROM refresh_tokens WHERE expires_at <= NOW() OR revoked = TRUE$$
+);
+
 -- +goose Down
 DROP TABLE IF EXISTS last_read_messages;
 DROP TABLE IF EXISTS friendships;
@@ -110,3 +118,16 @@ DROP TYPE IF EXISTS friendship_workflow_state;
 DROP TYPE IF EXISTS message_workflow_state;
 DROP TYPE IF EXISTS message_type;
 DROP TYPE IF EXISTS user_workflow_state;
+
+-- +goose StatementBegin
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'delete_expired_tokens') THEN
+        PERFORM cron.unschedule('delete_expired_tokens');
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+-- +goose StatementEnd
+
+DROP EXTENSION IF EXISTS "pg_cron";
+DROP EXTENSION IF EXISTS "uuid-ossp";
