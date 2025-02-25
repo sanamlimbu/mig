@@ -37,12 +37,14 @@ type Message interface {
 }
 
 type MessageCreatedTopicPayload struct {
-	ID          string          `json:"id"`
-	SenderID    string          `json:"sender_id"`
-	RecipientID string          `json:"recipient_id"`
-	Content     string          `json:"content"`
-	Type        mig.MessageType `json:"type"`
-	CreatedAt   time.Time       `json:"created_at"`
+	ID             string          `json:"id"`
+	SenderID       string          `json:"sender_id"`
+	RecipientID    string          `json:"recipient_id"`
+	Content        string          `json:"content"`
+	Type           mig.MessageType `json:"type"`
+	CreatedAt      time.Time       `json:"created_at"`
+	SenderUsername string          `json:"sender_username"`
+	RecipientName  string          `json:"recipient_name"`
 }
 
 func (m MessageCreatedTopicPayload) GetTopic() Topic {
@@ -50,14 +52,16 @@ func (m MessageCreatedTopicPayload) GetTopic() Topic {
 }
 
 type MessageUpdatedTopicPayload struct {
-	ID           string                   `json:"id"`
-	SenderID     string                   `json:"sender_id"`
-	RecipientID  string                   `json:"recipient_id"`
-	Content      string                   `json:"content"`
-	WorflowState mig.MessageWorkflowState `json:"workflow_state"`
-	IsRead       null.Bool                `json:"is_read"`
-	CreatedAt    time.Time                `json:"created_at"`
-	UpdatedAt    time.Time                `json:"updated_at"`
+	ID             string                   `json:"id"`
+	SenderID       string                   `json:"sender_id"`
+	RecipientID    string                   `json:"recipient_id"`
+	Content        string                   `json:"content"`
+	WorflowState   mig.MessageWorkflowState `json:"workflow_state"`
+	IsRead         null.Bool                `json:"is_read"`
+	CreatedAt      time.Time                `json:"created_at"`
+	UpdatedAt      time.Time                `json:"updated_at"`
+	SenderUsername string                   `json:"sender_username"`
+	RecipientName  string                   `json:"recipient_name"`
 }
 
 func (m MessageUpdatedTopicPayload) GetTopic() Topic {

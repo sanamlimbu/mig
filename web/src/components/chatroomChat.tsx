@@ -88,6 +88,14 @@ function ChatBox({
           sender_id: payload.sender_id,
           type: payload.type,
           created_at: payload.created_at,
+          sender: {
+            username: payload.sender_username,
+            id: payload.sender_id,
+            email: '',
+            workflow_state: 'active',
+            avatar_url: '',
+            role: 'member',
+          },
         };
         setMessages((prev) => [message, ...prev]);
       }
@@ -105,9 +113,9 @@ function ChatBox({
       recipient_id: chatroom.id,
       content: inputRef.current?.value,
       type: 'chatroom',
+      sender_username: user.username,
+      recipient_name: chatroom.name,
     };
-
-    console.log(message);
 
     sendJsonMessage<WebSocketMessage>(
       {

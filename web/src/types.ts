@@ -60,20 +60,24 @@ interface AuthenticationPayload {
 export interface MessageCreatedPayload {
   id: string;
   sender_id: string;
-  recipient_id: string;
+  recipient_id: string; // recipient user id or charoom id
   content: string;
   type: MessageType;
   created_at?: string;
+  sender_username: string;
+  recipient_name: string; // recipient username or chatroom name
 }
 
 export interface MessageUpdatedPayload {
   id: string;
   sender_id: string;
-  recipient_id: string;
+  recipient_id: string; // recipient user id or charoom id
   content: string;
   type: MessageType;
   created_at?: string;
   updated_at?: string;
+  sender_username: string;
+  recipient_name: string; // recipient username or chatroom name
 }
 
 type WebSocketMessageType =

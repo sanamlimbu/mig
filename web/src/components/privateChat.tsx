@@ -130,6 +130,8 @@ function ChatBox({
       recipient_id: recipient.id,
       content: inputRef.current?.value,
       type: 'private',
+      sender_username: sender.username,
+      recipient_name: recipient.username,
     };
 
     sendJsonMessage<WebSocketMessage>(
