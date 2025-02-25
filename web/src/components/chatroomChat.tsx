@@ -124,8 +124,6 @@ function ChatBox({
       },
       true
     );
-
-    setMessages((prev) => [message, ...prev]);
   };
   return (
     <div className="flex flex-col h-full">

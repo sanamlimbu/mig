@@ -1,6 +1,7 @@
 import { getRecentPrivateMessages } from '@/api/user';
 import { WS_BASE_URL } from '@/constants';
 import { useAuth } from '@/hooks/auth';
+import { useDebounce } from '@/hooks/debounce';
 import { useLastMessageSent } from '@/hooks/lastMessageSent';
 import { LastMessageSentProvider } from '@/providers/lastMessageSent';
 import {
@@ -26,6 +27,9 @@ import { ScrollArea } from './ui/scroll-area';
 export default function PrivateChats() {
   const { user } = useAuth();
   const [currentRecipient, setCurrentRecipient] = useState<User>();
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSetSearchTerm = useDebounce(setSearchTerm);
+
   const { isPending, isError, data, error } = useQuery({
     queryKey: [user.id, 'recent-private-messages'],
     queryFn: () =>
@@ -35,7 +39,7 @@ export default function PrivateChats() {
   currentRecipientRef.current = currentRecipient;
 
   const handleSearchTermChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log(e);
+    debouncedSetSearchTerm(e.currentTarget.value);
   };
 
   if (isPending) {
@@ -82,6 +86,7 @@ export default function PrivateChats() {
               className="mt-3 mb-2"
               onChange={handleSearchTermChange}
               placeholder="Search"
+              defaultValue={searchTerm}
             />
           </div>
           <ScrollArea className="h-[100vh] flex-grow">

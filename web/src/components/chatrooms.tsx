@@ -1,5 +1,6 @@
 import { getChatrooms } from '@/api/chatroom';
 import { useAuth } from '@/hooks/auth';
+import { useDebounce } from '@/hooks/debounce';
 import { Chatroom, User } from '@/types';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -13,13 +14,18 @@ import { ScrollArea } from './ui/scroll-area';
 
 export default function Chatrooms() {
   const { user } = useAuth();
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedChatroom, setSelectedChatroom] = useState<Chatroom>();
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSetSearchTerm = useDebounce(setSearchTerm);
 
   const { isPending, isError, data, error } = useQuery({
     queryKey: ['chatrooms', searchTerm],
     queryFn: () => getChatrooms(searchTerm, { page: 1, page_size: 20 }),
   });
+
+  const handleSearchTermChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    debouncedSetSearchTerm(e.currentTarget.value);
+  };
 
   if (isPending) {
     return (
@@ -41,8 +47,9 @@ export default function Chatrooms() {
           <Input
             type="text"
             className="mt-3 mb-2 w-full"
-            onChange={(e) => setSearchTerm(e.currentTarget.value)}
+            onChange={handleSearchTermChange}
             placeholder="Search"
+            defaultValue={searchTerm}
           />
         </div>
         <ScrollArea className="flex-grow">
