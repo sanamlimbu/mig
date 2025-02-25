@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"mig"
 	"net/http"
 	"slices"
@@ -107,8 +108,11 @@ func (c *HttpApiController) GetPrivateConversation(w http.ResponseWriter, r *htt
 func (c *HttpApiController) GetRecentPrivateMessages(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "user_id")
 	pagination := mig.NewPagination(r)
+	searchTerm := r.URL.Query().Get("search_term")
 
-	messages, err := c.userService.GetRecentPrivateMessagesWithUniqueParticipant(r.Context(), userID, pagination)
+	wildCardSearchTerm := fmt.Sprintf("%%%s%%", searchTerm)
+
+	messages, err := c.userService.GetRecentPrivateMessagesWithUniqueParticipant(r.Context(), userID, wildCardSearchTerm, pagination)
 	if err != nil {
 		mig.HttpErrorReply(w, err)
 		return

@@ -10,6 +10,7 @@ export function getPrivateConversationQueryKey(
 
 export async function getRecentPrivateMessages(
   userID: string,
+  searchTerm: string,
   pagination: Pagination
 ) {
   const { page, page_size } = pagination;
@@ -19,7 +20,7 @@ export async function getRecentPrivateMessages(
       unread_messages: Message[];
     }[]
   >(
-    `/users/${userID}/recent-private-messages?page=${page}&page_size=${page_size}`
+    `/users/${userID}/recent-private-messages?search_term=${searchTerm}&page=${page}&page_size=${page_size}`
   );
   return resp.data;
 }

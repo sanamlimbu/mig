@@ -45,7 +45,9 @@ FROM (
   FROM messages m
   JOIN users s ON s.id = m.sender_id
   JOIN users r ON r.id = m.recipient_id
-  WHERE m.sender_id = @user_id OR m.recipient_id = @user_id
+  WHERE 
+    (m.sender_id = @user_id OR m.recipient_id = @user_id) AND
+    (s.username ILIKE @search_term OR r.username ILIKE @search_term)
   ORDER BY 
     LEAST (m.sender_id, m.recipient_id),
     GREATEST (m.sender_id, m.recipient_id),

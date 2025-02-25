@@ -117,8 +117,8 @@ func (s *Service) GetUser(ctx context.Context, userID string) (mig.User, error) 
 	return result, nil
 }
 
-func (s *Service) GetRecentPrivateMessagesWithUniqueParticipant(ctx context.Context, userID string, pagination mig.Pagination) ([]mig.Message, error) {
-	result, err := s.userRepo.GetRecentPrivateMessagesWithUniqueParticipant(ctx, userID, pagination)
+func (s *Service) GetRecentPrivateMessagesWithUniqueParticipant(ctx context.Context, userID, searchTerm string, pagination mig.Pagination) ([]mig.Message, error) {
+	result, err := s.userRepo.GetRecentPrivateMessagesWithUniqueParticipant(ctx, userID, searchTerm, pagination)
 	if err != nil {
 		return nil, mig.NewError(fmt.Sprintf("unable to fetch private messages of user id %s", userID), err, mig.InternalServerError)
 	}

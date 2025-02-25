@@ -370,21 +370,24 @@ FROM (
   FROM messages m
   JOIN users s ON s.id = m.sender_id
   JOIN users r ON r.id = m.recipient_id
-  WHERE m.sender_id = $1 OR m.recipient_id = $1
+  WHERE 
+    (m.sender_id = $1 OR m.recipient_id = $1) AND
+    (s.username ILIKE $2 OR r.username ILIKE $2)
   ORDER BY 
     LEAST (m.sender_id, m.recipient_id),
     GREATEST (m.sender_id, m.recipient_id),
     m.created_at DESC
 ) subquery
 ORDER BY subquery.created_at DESC
-LIMIT $3
-OFFSET $2
+LIMIT $4
+OFFSET $3
 `
 
 type GetRecentPrivateMessagesWithUniqueParticipantParams struct {
-	UserID   pgtype.UUID
-	Page     int32
-	PageSize int32
+	UserID     pgtype.UUID
+	SearchTerm string
+	Page       int32
+	PageSize   int32
 }
 
 type GetRecentPrivateMessagesWithUniqueParticipantRow struct {
@@ -408,7 +411,12 @@ type GetRecentPrivateMessagesWithUniqueParticipantRow struct {
 }
 
 func (q *Queries) GetRecentPrivateMessagesWithUniqueParticipant(ctx context.Context, arg GetRecentPrivateMessagesWithUniqueParticipantParams) ([]GetRecentPrivateMessagesWithUniqueParticipantRow, error) {
-	rows, err := q.db.Query(ctx, getRecentPrivateMessagesWithUniqueParticipant, arg.UserID, arg.Page, arg.PageSize)
+	rows, err := q.db.Query(ctx, getRecentPrivateMessagesWithUniqueParticipant,
+		arg.UserID,
+		arg.SearchTerm,
+		arg.Page,
+		arg.PageSize,
+	)
 	if err != nil {
 		return nil, err
 	}

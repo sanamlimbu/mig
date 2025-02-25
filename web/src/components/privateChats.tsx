@@ -31,9 +31,9 @@ export default function PrivateChats() {
   const debouncedSetSearchTerm = useDebounce(setSearchTerm);
 
   const { isPending, isError, data, error } = useQuery({
-    queryKey: [user.id, 'recent-private-messages'],
+    queryKey: [user.id, searchTerm, 'recent-private-messages'],
     queryFn: () =>
-      getRecentPrivateMessages(user.id, { page: 1, page_size: 40 }),
+      getRecentPrivateMessages(user.id, searchTerm, { page: 1, page_size: 40 }),
   });
   const currentRecipientRef = useRef(currentRecipient);
   currentRecipientRef.current = currentRecipient;
