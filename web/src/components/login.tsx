@@ -79,7 +79,7 @@ export default function Login() {
             <p>
               Username: <span className="font-medium">jack</span> and Password:{' '}
               <span className="font-medium">jack123</span> <br />
-              Username: <span className="font-medium">rose</span> and Password:{' '}
+              Username: <span className="font-medium">jill</span> and Password:{' '}
               <span className="font-medium">jill123</span>
             </p>
           </AlertDescription>

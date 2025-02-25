@@ -7,6 +7,7 @@ import (
 	"mig"
 	"mig/db"
 	"mig/repository"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
@@ -15,8 +16,8 @@ import (
 
 // Users will create total of (count + 2) users.
 // `count` number of user are random users.
-// Two users Jack(username: jack, email: jack@example.com, password: jack123) and
-// Rose(username: rose, email:rose@example.com, password: rose123) are also created.
+// Two users Jack(username: jack, email: jack@limbu.dev, password: jack123) and
+// Jill(username: jill, email:jill@limbu.dev, password: jill123) are also created.
 func (s *SeederPostgreSQL) Users(ctx context.Context, uuids []string) ([]mig.User, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -39,7 +40,7 @@ func (s *SeederPostgreSQL) Users(ctx context.Context, uuids []string) ([]mig.Use
 	users := make([]mig.User, length)
 
 	for i := 0; i < len(uuids)-2; i++ {
-		username := s.faker.Username()
+		username := strings.ToLower(s.faker.Username())
 
 		passwordHash, err := bcrypt.GenerateFromPassword([]byte(username+"123"), 8)
 		if err != nil {
@@ -54,7 +55,7 @@ func (s *SeederPostgreSQL) Users(ctx context.Context, uuids []string) ([]mig.Use
 		args := db.CreateUserParams{
 			ID:            uuid,
 			Username:      username,
-			Email:         s.faker.Email(),
+			Email:         fmt.Sprintf("%s@limbu.dev", username),
 			Password:      string(passwordHash),
 			WorkflowState: db.UserWorkflowStateActive,
 		}
@@ -85,7 +86,7 @@ func (s *SeederPostgreSQL) Users(ctx context.Context, uuids []string) ([]mig.Use
 	jackArgs := db.CreateUserParams{
 		ID:            jackUUID,
 		Username:      "jack",
-		Email:         "jack@example.com",
+		Email:         "jack@limbu.dev",
 		Password:      string(jackPasswordHash),
 		WorkflowState: db.UserWorkflowStateActive,
 	}
@@ -95,24 +96,24 @@ func (s *SeederPostgreSQL) Users(ctx context.Context, uuids []string) ([]mig.Use
 		return nil, err
 	}
 
-	rosePasswordHash, err := bcrypt.GenerateFromPassword([]byte("rose123"), 8)
+	jillPasswordHash, err := bcrypt.GenerateFromPassword([]byte("jill123"), 8)
 	if err != nil {
 		return nil, err
 	}
 
-	roseUUID, err := repository.StringToUUID(UsersUUIDs[length-1])
+	jillUUID, err := repository.StringToUUID(UsersUUIDs[length-1])
 	if err != nil {
 		return nil, err
 	}
-	roseArgs := db.CreateUserParams{
-		ID:            roseUUID,
-		Username:      "rose",
-		Email:         "rose@example.com",
-		Password:      string(rosePasswordHash),
+	jillArgs := db.CreateUserParams{
+		ID:            jillUUID,
+		Username:      "jill",
+		Email:         "jill@limbu.dev",
+		Password:      string(jillPasswordHash),
 		WorkflowState: db.UserWorkflowStateActive,
 	}
 
-	rose, err := qtx.CreateUser(ctx, roseArgs)
+	jill, err := qtx.CreateUser(ctx, jillArgs)
 	if err != nil {
 		return nil, err
 	}
@@ -125,10 +126,10 @@ func (s *SeederPostgreSQL) Users(ctx context.Context, uuids []string) ([]mig.Use
 	}
 
 	users[length-1] = mig.User{
-		ID:            repository.UUIDToString(rose.ID),
-		Email:         rose.Email,
-		Username:      rose.Username,
-		WorkflowState: mig.UserWorkflowState(rose.WorkflowState),
+		ID:            repository.UUIDToString(jill.ID),
+		Email:         jill.Email,
+		Username:      jill.Username,
+		WorkflowState: mig.UserWorkflowState(jill.WorkflowState),
 	}
 
 	err = tx.Commit(ctx)

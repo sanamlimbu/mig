@@ -35,7 +35,7 @@ func TestGetUser(t *testing.T) {
 
 func TestGetUserByEmail(t *testing.T) {
 	ctx := context.Background()
-	email := "jack@example.com"
+	email := "jack@limbu.dev"
 
 	user, err := userRepo.GetUserByEmail(ctx, email)
 	if err != nil {
