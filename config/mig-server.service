@@ -1,0 +1,28 @@
+[Unit]
+Description=Mig API Server
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+ExecStart=/usr/local/bin/mig-server serve
+Restart=always
+RestartSec=5s
+StandardOutput=append:/var/log/mig-server.log
+StandardError=append:/var/log/mig-server.log
+
+Environment="MIG_ADDR=localhost:8080"
+Environment="MIG_ENVIRONMENT=production"
+Environment="MIG_JWT_SECRET=***********"
+Environment="MIG_APP_NAME=mig-api-server"
+Environment="MIG_NATS_URL=nats://**************@localhost:4222"
+Environment="MIG_DATABASE_USER=******"
+Environment="MIG_DATABASE_PASS=*******"
+Environment="MIG_DATABASE_HOST=*******"
+Environment="MIG_DATABASE_PORT=5432"
+Environment="MIG_DATABASE_NAME=postgres"
+Environment="MIG_ALLOWED_ORIGINS=https://mig.limbu.dev"
+
+[Install]
+WantedBy=multi-user.target

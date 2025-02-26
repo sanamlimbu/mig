@@ -5,14 +5,15 @@ After=network-online.target ntp.service
 [Service]
 PrivateTmp=true
 Type=simple
-ExecStart=/usr/bin/nats-server -c /etc/nats-server.conf
+ExecStart=/usr/bin/nats-server -c /etc/nats/nats-server.conf
 ExecReload=/bin/kill -s HUP $MAINPID
 ExecStop=/bin/kill -s SIGINT $MAINPID
 User=ubuntu
 Group=ubuntu
 # The nats-server uses SIGUSR2 to trigger using Lame Duck Mode (LDM) shutdown
 KillSignal=SIGUSR2
-# You might want to adjust TimeoutStopSec too.
+Restart=on-failure
+RestartSec=5s
 
 [Install]
 WantedBy=multi-user.target
