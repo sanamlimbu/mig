@@ -372,7 +372,10 @@ FROM (
   JOIN users r ON r.id = m.recipient_id
   WHERE 
     (m.sender_id = $1 OR m.recipient_id = $1) AND
-    (s.username ILIKE $2 OR r.username ILIKE $2)
+    (
+      (m.sender_id = $1 AND r.username ILIKE $2) OR
+      (m.recipient_id = $1 AND s.username ILIKE $2)
+    )
   ORDER BY 
     LEAST (m.sender_id, m.recipient_id),
     GREATEST (m.sender_id, m.recipient_id),
