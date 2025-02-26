@@ -68,11 +68,11 @@ go-mod-tidy:
 
 .PHONY: go-errcheck
 go-errcheck:
-	cd $(SERVER) && errcheck ./...
+	cd $(SERVER) && go tool errcheck ./...
 
 .PHONY: go-lint
 go-lint:
-	cd $(SERVER) && golangci-lint run ./...
+	cd $(SERVER) && go tool golangci-lint run ./...
 
 .PHONY: go-test
 go-test:
@@ -84,7 +84,7 @@ go-mod-download:
 
 .PHONY: serve
 serve:
-	cd $(SERVER) && air -c .air.toml
+	cd $(SERVER) && go tool air -c .air.toml
 
 .PHONY: generate
 generate:
