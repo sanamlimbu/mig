@@ -22,16 +22,6 @@ type Client struct {
 	clientType clientType
 }
 
-type chatroomRegister struct {
-	client     *Client
-	chatroomID string
-}
-
-type chatroomUnregister struct {
-	client     *Client
-	chatroomID string
-}
-
 type clientType string
 
 const (
